@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.8.0)
 
-project (dakota)
+project(dakota)
 set(VCPKG_TARGET_ARCHITECTURE x64)
 set(VCPKG_CRT_LINKAGE static)
 set(VCPKG_LIBRARY_LINKAGE static)
