@@ -1,0 +1,37 @@
+cmake_minimum_required(VERSION 3.8.0)
+
+project (dakota)
+set(VCPKG_TARGET_ARCHITECTURE x64)
+set(VCPKG_CRT_LINKAGE static)
+set(VCPKG_LIBRARY_LINKAGE static)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+
+if(MSVC)
+    set(CMAKE_CXX_FLAGS_RELEASE "/MT")
+    set(CMAKE_CXX_FLAGS_DEBUG "/ZI /Od /MDd")
+    set_source_files_properties(stdafx.cpp PROPERTIES COMPILE_FLAGS "/Ycstdafx.h")
+    set_source_files_properties(dakota.cpp PROPERTIES COMPILE_FLAGS "/Yustdafx.h")
+endif()
+
+find_package(JNI REQUIRED)
+find_package(unofficial-http-parser REQUIRED)
+find_package(fmt REQUIRED)
+find_package(restinio REQUIRED)
+find_package(Threads REQUIRED)
+
+if (JNI_FOUND)
+    message(STATUS "JNI_INCLUDE_DIRS=${JNI_INCLUDE_DIRS}")
+    message(STATUS "JNI_LIBRARIES=${JNI_LIBRARIES}")
+    message(STATUS "JAVA_INCLUDE_PATH=${JAVA_INCLUDE_PATH}")
+    message(STATUS "JAVA_INCLUDE_PATH2=${JAVA_INCLUDE_PATH2}")
+endif()
+
+INCLUDE_DIRECTORIES(${JAVA_INCLUDE_PATH})
+INCLUDE_DIRECTORIES(${JAVA_INCLUDE_PATH2})
+
+add_library(dakota SHARED stdafx.h stdafx.cpp dakota.cpp)
+
+target_link_libraries(dakota PRIVATE restinio::restinio Threads::Threads)
+
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT dakota)
