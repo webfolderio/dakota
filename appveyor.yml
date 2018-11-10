@@ -19,8 +19,6 @@ environment:
 
 build_script:
   - vcpkg.exe install restinio:x64-windows-static
-  - vcpkg.exe install http-parser:x64-windows-static
-  - vcpkg.exe install fmt:x64-windows-static
   - if not exist .\build mkdir build
   - cd build
   - cmake .. -G"Visual Studio 15 2017 Win64"
