@@ -25,4 +25,19 @@ build_script:
   - cmake .. -G"Visual Studio 15 2017 Win64" -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
   - cmake --build . --config Release
   - cd ..\..
-  - mvn test
+  - mvn -DskipTests -q clean package
+
+  test_script:
+  - mvn -q surefire-report:report
+
+after_test:
+  - ps: |
+        $wc = New-Object 'System.Net.WebClient'
+        Get-ChildItem . -Name -Recurse 'TEST-*.xml'  |
+        Foreach-Object {
+            $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path $_))
+        }
+
+artifacts:
+  - path: native\build\Release\dakota.dll
+    name: dakota x64-windows dll

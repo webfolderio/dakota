@@ -10,7 +10,7 @@ public class Server {
         load(Paths.get(".")
             .toAbsolutePath()
             .normalize()
-            .resolve("native/build/Release/dakota.dll")
+            .resolve("native/build-debug/Debug/dakota.dll")
             .toString());
     }
 

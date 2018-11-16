@@ -396,36 +396,38 @@ namespace dakota
             using settings_t = restinio::run_on_thread_pool_settings_t<dakota_traits>;
             using server_t = restinio::http_server_t<dakota_traits>;
 
+            restinio::asio_ns::io_context ioctx;
+            auto pool = new thread_pool_t{ pool_size, ioctx };
+
             auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
                 .port(8080)
                 .address("localhost")
-                .cleanup_func([klassRequest, constructorRequest, handleMethod, statusField]() {
-                    delete klassRequest, constructorRequest, handleMethod, statusField;
+                .cleanup_func([pool, klassRequest, constructorRequest, handleMethod, statusField]() {
+                    delete pool, klassRequest, constructorRequest,
+                            handleMethod, statusField;
                 })
                 .request_handler(std::move(router));
 
-            restinio::asio_ns::io_context ioctx;
-            thread_pool_t pool{ pool_size, ioctx };
-
             server_t server{
                 restinio::external_io_context(ioctx),
-                std::forward<settings_t>(settings) };
+                std::forward<settings_t>(settings)
+            };
 
             server.open_sync();
-            pool.start();
+            pool->start();
 
-            if (pool.started()) {
+            if (pool->started()) {
                 JavaField field = { env, "io/webfolder/dakota/Server", "pool", "J" };
-                env->SetLongField(that, field.get(), (jlong)&pool);
+                env->SetLongField(that, field.get(), (jlong)pool);
             }
 
-            pool.wait();
+            pool->wait();
         }
 
         static JNIEXPORT void JNICALL stop(JNIEnv *env, jobject that) {
             JavaField field = { env, "io/webfolder/dakota/Server", "pool", "J" };
             jlong ptr = env->GetLongField(that, field.get());
-            auto *pool = *(thread_pool_t **)&ptr;
+            auto *pool = *(thread_pool_t **)ptr;
             pool->stop();
         }
 
