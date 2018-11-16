@@ -5,388 +5,469 @@
 #define IDX_HNDLR  2
 #define IDX_LEN    3
 
-static std::atomic<JavaVM*> jvm;
-static std::map<std::thread::id, jlong> envCache;
+#define HANDLER_STATUS_REJECTED 0
+#define HANDLER_STATUS_ACCEPTED 1
 
-class external_io_context_for_thread_pool_t
+namespace dakota
 {
-    restinio::asio_ns::io_context & m_ioctx;
+    static std::atomic<JavaVM*> jvm;
+    static std::map<std::thread::id, jlong> envCache;
 
-public:
-    external_io_context_for_thread_pool_t(
-        restinio::asio_ns::io_context & ioctx)
-        : m_ioctx{ ioctx }
-    {}
+    class external_io_context_for_thread_pool_t
+    {
+        restinio::asio_ns::io_context & m_ioctx;
 
-    auto & io_context() noexcept { return m_ioctx; }
-};
+    public:
+        external_io_context_for_thread_pool_t(
+            restinio::asio_ns::io_context & ioctx)
+            : m_ioctx{ ioctx }
+        {}
 
-template<typename Io_Context_Holder>
-class ioctx_on_thread_pool_t
-{
-public:
-    ioctx_on_thread_pool_t(const ioctx_on_thread_pool_t &) = delete;
-    ioctx_on_thread_pool_t(ioctx_on_thread_pool_t &&) = delete;
+        auto & io_context() noexcept { return m_ioctx; }
+    };
 
-    template< typename... Io_Context_Holder_Ctor_Args >
-    ioctx_on_thread_pool_t(
-        std::size_t pool_size,
-        Io_Context_Holder_Ctor_Args && ...ioctx_holder_args)
-        : m_ioctx_holder{
-                std::forward<Io_Context_Holder_Ctor_Args>(ioctx_holder_args)... }
-                , m_pool(pool_size)
-        , m_status(status_t::stopped)
-    {}
+    template<typename Io_Context_Holder>
+    class ioctx_on_thread_pool_t
+    {
+    public:
+        ioctx_on_thread_pool_t(const ioctx_on_thread_pool_t &) = delete;
+        ioctx_on_thread_pool_t(ioctx_on_thread_pool_t &&) = delete;
 
-    ~ioctx_on_thread_pool_t() {
-        if (started()) {
-            stop();
-            wait();
-        }
-    }
+        template< typename... Io_Context_Holder_Ctor_Args >
+        ioctx_on_thread_pool_t(
+            std::size_t pool_size,
+            Io_Context_Holder_Ctor_Args && ...ioctx_holder_args)
+            : m_ioctx_holder{
+                    std::forward<Io_Context_Holder_Ctor_Args>(ioctx_holder_args)... }
+                    , m_pool(pool_size)
+            , m_status(status_t::stopped)
+        {}
 
-    void start() {
-
-        if (started()) {
-            throw restinio::exception_t{
-                "io_context_with_thread_pool is already started" };
+        ~ioctx_on_thread_pool_t() {
+            if (started()) {
+                stop();
+                wait();
+            }
         }
 
-        try {
-            std::generate(
-                begin(m_pool),
-                end(m_pool),
-                [this] {
-                return
-                    std::thread{ [this] {
+        void start() {
 
-                        JavaVM *vm = jvm.load();
-                        if (vm) {
-                            JNIEnv* env = NULL;
-                            jint ret = vm->AttachCurrentThread((void**)&env, NULL);
-                            if (ret == JNI_OK) {
-                                envCache[std::this_thread::get_id()] = (jlong)env;
+            if (started()) {
+                throw restinio::exception_t{
+                    "io_context_with_thread_pool is already started" };
+            }
 
-                                thread_local struct DetachOnExit {
-                                    ~DetachOnExit() {
-                                        JavaVM *vm = jvm.load();
-                                        if (vm) {
-                                            vm->DetachCurrentThread();
+            try {
+                std::generate(
+                    begin(m_pool),
+                    end(m_pool),
+                    [this] {
+                    return
+                        std::thread{ [this] {
+
+                            JavaVM *vm = jvm.load();
+                            if (vm) {
+                                JNIEnv* env = NULL;
+                                jint ret = vm->AttachCurrentThread((void**)&env, NULL);
+                                if (ret == JNI_OK) {
+                                    envCache[std::this_thread::get_id()] = (jlong)env;
+
+                                    thread_local struct DetachOnExit {
+                                        ~DetachOnExit() {
+                                            JavaVM *vm = jvm.load();
+                                            if (vm) {
+                                                vm->DetachCurrentThread();
+                                            }
                                         }
-                                    }
-                                } detachOnExit;
+                                    } detachOnExit;
+                                }
                             }
-                        }
 
-                        auto work {
-                             restinio::asio_ns::make_work_guard(m_ioctx_holder.io_context())
-                        };
+                            auto work {
+                                 restinio::asio_ns::make_work_guard(m_ioctx_holder.io_context())
+                            };
 
-                        m_ioctx_holder.io_context().run();
-                    } };
-            });
+                            m_ioctx_holder.io_context().run();
+                        } };
+                });
 
-            // When all thread started successfully
-            // status can be changed.
-            m_status = status_t::started;
+                // When all thread started successfully
+                // status can be changed.
+                m_status = status_t::started;
+            }
+            catch (const std::exception &)
+            {
+                io_context().stop();
+                for (auto & t : m_pool) {
+                    if (t.joinable()) {
+                        t.join();
+                    }
+                }
+            }
         }
-        catch (const std::exception &)
-        {
-            io_context().stop();
-            for (auto & t : m_pool) {
-                if (t.joinable()) {
+
+        void stop() {
+            if (started()) {
+                io_context().stop();
+            }
+        }
+
+        void wait() {
+            if (started()) {
+                for (auto & t : m_pool) {
                     t.join();
                 }
+                // When all threads are stopped status can be changed.
+                m_status = status_t::stopped;
             }
         }
-    }
 
-    void stop() {
-        if (started()) {
-            io_context().stop();
+        bool started() const noexcept { return status_t::started == m_status; }
+
+        restinio::asio_ns::io_context & io_context() noexcept {
+            return m_ioctx_holder.io_context();
         }
-    }
 
-    void wait() {
-        if (started()) {
-            for (auto & t : m_pool) {
-                t.join();
+    private:
+        enum class status_t : std::uint8_t { stopped, started };
+
+        Io_Context_Holder m_ioctx_holder;
+        std::vector<std::thread> m_pool;
+        status_t m_status;
+    };
+
+    struct dakota_traits : public restinio::default_traits_t {
+        using request_handler_t = restinio::router::express_router_t<>;
+    };
+
+    static enum ReflectionCacheType {
+        global,
+        local
+    };
+
+    static class String {
+        JNIEnv * env_;
+        jstring java_str_;
+        const char * str_;
+    public:
+        String(const String &) = delete;
+        String(String &&) = delete;
+        String(JNIEnv * env, jstring from)
+            : env_{ env }, java_str_(from), str_{ env->GetStringUTFChars(from, JNI_FALSE) }
+        {}
+        ~String() {
+            env_->ReleaseStringUTFChars(java_str_, str_);
+        }
+        const char * c_str() const noexcept { return str_; }
+    };
+
+    static class JavaClass {
+
+        JNIEnv *env_;
+        ReflectionCacheType type_;
+        jclass klass_;
+
+    public:
+
+        JavaClass(const JavaClass &) = delete;
+        JavaClass(JavaClass &&) = delete;
+        ~JavaClass() {
+            switch (type_) {
+            case global: env_->DeleteGlobalRef(klass_);
+            default: env_->DeleteLocalRef(klass_);
             }
-
-            // When all threads are stopped status can be changed.
-            m_status = status_t::stopped;
         }
-    }
 
-    bool started() const noexcept { return status_t::started == m_status; }
+        JavaClass(JNIEnv *env, const char *className) : JavaClass(env, local, className) { }
 
-    restinio::asio_ns::io_context & io_context() noexcept {
-        return m_ioctx_holder.io_context();
-    }
-
-private:
-    enum class status_t : std::uint8_t { stopped, started };
-
-    Io_Context_Holder m_ioctx_holder;
-    std::vector<std::thread> m_pool;
-    status_t m_status;
-};
-
-struct dakota_traits : public restinio::default_traits_t {
-    using request_handler_t = restinio::router::express_router_t<>;
-};
-
-static struct ReflectionUtil {
-
-    ReflectionUtil() {
-        // no op
-    }
-
-    ReflectionUtil(JNIEnv* env, bool callGlobal) {
-        global = callGlobal;
-        class_requestImpl = getClass(env, "io/webfolder/dakota/RequestImpl");
-        class_responseImpl = getClass(env, "io/webfolder/dakota/ResponseImpl");
-        constructor_request = getMethod(env, class_requestImpl, "<init>", "(J)V");
-        class_routeHandler = getClass(env, "io/webfolder/dakota/RouteHandler");
-        method_handle = getMethod(env, class_routeHandler, "handle", "(Lio/webfolder/dakota/Request;)Z");
-        class_server = getClass(env, "io/webfolder/dakota/Server");
-        field_pool = getField(env, class_server, "pool", "J");
-        field_request = getField(env, class_requestImpl, "request", "J");
-        field_response = getField(env, class_responseImpl, "response", "J");
-        reflection_util = getField(env, class_server, "reflectionUtil", "J");
-    }
-
-public:
-    jclass request() { return class_requestImpl; }
-    jclass response() { return class_responseImpl; }
-    jclass handler() { return class_routeHandler; }
-    jmethodID constructorRequest() { return constructor_request; }
-    jmethodID handle() { return method_handle; }
-    jfieldID fieldRequest() { return field_request; }
-    jfieldID fieldResponse() { return field_response; }
-    jfieldID fieldPool() { return field_pool; }
-    jfieldID fieldReflectionUtil() { return reflection_util; }
-
-    void dispose(JNIEnv *env) {
-        if (global) {
-            env->DeleteGlobalRef(class_requestImpl);
-            env->DeleteGlobalRef(class_responseImpl);
-            env->DeleteGlobalRef(class_routeHandler);
-            env->DeleteGlobalRef((jobject)constructor_request);
-            env->DeleteGlobalRef((jobject)method_handle);
-        }
-    }
-
-private:
-    bool global;
-    jclass class_requestImpl, class_responseImpl, class_routeHandler, class_server;
-    jmethodID constructor_request, method_handle;
-    jfieldID field_pool, reflection_util, field_request, field_response;
-
-    jclass getClass(JNIEnv *env, const char *className) {
-        jclass klass = env->FindClass(className);
-        if (global) {
-            klass = (jclass)env->NewGlobalRef(klass);
-        }
-        return klass;
-    }
-
-    jmethodID getMethod(JNIEnv *env, jclass klass, const char *name, const char *signature) {
-        jmethodID method = (jmethodID)env->GetMethodID(klass, name, signature);
-        if (global) {
-            method = (jmethodID)env->NewGlobalRef((jobject)method);
-        }
-        return method;
-    }
-
-    jfieldID getField(JNIEnv *env, jclass klass, const char *name, const char *signature) {
-        jfieldID field = env->GetFieldID(klass, name, signature);
-        return field;
-    }
-};
-
-static struct Server {
-
-    using thread_pool_t = ioctx_on_thread_pool_t<external_io_context_for_thread_pool_t>;
-
-    Server() {
-        // no op
-    }
-
-    Server(JNIEnv *env) {
-        // Server
-        JNINativeMethod serverMethods[] = {
-            "_run", "([[Ljava/lang/Object;)V", (void *)&Server::run,
-            "_stop", "()V", (void *)&Server::stop,
-        };
-        jclass klass = env->FindClass("io/webfolder/dakota/Server");
-        env->RegisterNatives(klass, serverMethods, sizeof(serverMethods) / sizeof(serverMethods[0]));
-        // RequestImpl
-        JNINativeMethod requestImpl[] = {
-            "_createResponse", "(ILjava/lang/String;)J", (void *)&Server::createResponse
-        };
-        klass = env->FindClass("io/webfolder/dakota/RequestImpl");
-        env->RegisterNatives(klass, requestImpl, sizeof(requestImpl) / sizeof(requestImpl[0]));
-        // ResponseImpl
-        JNINativeMethod responseImpl[] = {
-            "_done", "()V", (void *)&Server::done,
-            "_setBody", "(Ljava/lang/String;)V", (void *)&Server::setBody
-        };
-        klass = env->FindClass("io/webfolder/dakota/ResponseImpl");
-        env->RegisterNatives(klass, responseImpl, sizeof(responseImpl) / sizeof(responseImpl[0]));
-    }
-
-public:
-
-    static restinio::http_method_t to_method(const char *method) {
-        restinio::http_method_t httpMethod;
-        if (strcmp(method, "get") == 0) {
-            httpMethod = restinio::http_method_t::http_get;
-        }
-        else if (strcmp(method, "post") == 0) {
-            httpMethod = restinio::http_method_t::http_post;
-        }
-        else if (strcmp(method, "delete") == 0) {
-            httpMethod = restinio::http_method_t::http_delete;
-        }
-        else if (strcmp(method, "head") == 0) {
-            httpMethod = restinio::http_method_t::http_head;
-        }
-        return httpMethod;
-    }
-
-    static JNIEXPORT void JNICALL run(JNIEnv *env, jobject that, jobjectArray routes) {
-        auto router = std::make_unique<restinio::router::express_router_t<>>();
-
-        ReflectionUtil reflect = { env, true };
-
-        jsize len = env->GetArrayLength(routes);
-        for (jsize i = 0; i < len; i++) {
-            jobjectArray next = (jobjectArray)env->GetObjectArrayElement(routes, i);
-            if (env->GetArrayLength(next) != IDX_LEN) {
-                continue;
+        JavaClass(JNIEnv *env, ReflectionCacheType type, const char *className) :
+            env_(env), type_(type) {
+            jclass klass = env_->FindClass(className);
+            if (type_ == global) {
+                klass_ = (jclass)env_->NewGlobalRef(klass);
+                env->DeleteLocalRef(klass);
             }
-            jstring method = (jstring)env->GetObjectArrayElement(next, IDX_METHOD);
-            const char *c_method = env->GetStringUTFChars(method, JNI_FALSE);
-            jstring path = (jstring)env->GetObjectArrayElement(next, IDX_PATH);
-            const char *c_path = env->GetStringUTFChars(path, JNI_FALSE);
-            jobject handler = (jobject)env->GetObjectArrayElement(next, IDX_HNDLR);
-            handler = env->NewGlobalRef(handler);
+            else {
+                klass_ = klass;
+            }
+        }
 
-            restinio::http_method_t httpMethod = to_method(c_method);
+        jclass get() const noexcept {
+            return klass_;
+        }
+    };
 
-            router->add_handler(httpMethod,
-                c_path,
-                [&](restinio::request_handle_t req,
-                    restinio::router::route_params_t params) {
+    static class JavaMethod {
 
-                jlong ptr_request = (jlong)&req;
+        JNIEnv *env_;
+        ReflectionCacheType type_;
+        jmethodID method_;
 
-                auto env_route = *(JNIEnv **)&envCache[std::this_thread::get_id()];
+    public:
 
-                jobject requestImpl = env_route->NewObject(reflect.request(),
-                    reflect.constructorRequest(),
-                    ptr_request);
+        JavaMethod(const JavaMethod &) = delete;
+        JavaMethod(JavaMethod &&) = delete;
+        ~JavaMethod() {
+            switch (type_) {
+            case global: env_->DeleteGlobalRef((jobject)method_);
+            default: env_->DeleteLocalRef((jobject)method_);
+            }
+        }
 
-                requestImpl = env_route->NewGlobalRef(requestImpl);
-                jboolean accepted = (jboolean)env_route->CallObjectMethod(handler, reflect.handle(), requestImpl);
+        JavaMethod(JNIEnv *env, const char *klass,
+            const char *name, const char *signature)
+            : JavaMethod(env, local, klass, name, signature) { }
 
-                if (env_route->ExceptionCheck()) {
-                    env_route->DeleteGlobalRef(requestImpl);
-                    requestImpl = NULL;
+        JavaMethod(JNIEnv *env, ReflectionCacheType type,
+            const char *klass, const char *name,
+            const char *signature) :
+            env_(env), type_(type) {
+            jclass klass_ = env_->FindClass(klass);
+            if (klass_) {
+                jmethodID method = env->GetMethodID(klass_, name, signature);
+                if (type_ == global) {
+                    method_ = (jmethodID)env_->NewGlobalRef((jobject)method);
+                    env_->DeleteLocalRef((jobject)method);
+                }
+                else {
+                    method_ = method;
+                }
+                env->DeleteLocalRef(klass_);
+            }
+        }
+
+        jmethodID get() const noexcept {
+            return method_;
+        }
+    };
+
+    static class Context {
+        restinio::request_handle_t *req_;
+        restinio::response_builder_t<restinio::restinio_controlled_output_t> *res_;
+        jobject requestObject_;
+
+        public:
+            Context(const JavaMethod &) = delete;
+            Context(JavaMethod &&) = delete;
+            ~Context() {
+                delete req_;
+                delete res_;
+            }
+            Context(restinio::request_handle_t *req) : req_(req) {
+            }
+            restinio::request_handle_t *request() const {
+                return req_;
+            }
+            restinio::response_builder_t<restinio::restinio_controlled_output_t> *response() const {
+                return res_;
+            }
+            void setResponse(restinio::response_builder_t<restinio::restinio_controlled_output_t> *response) {
+                res_ = response;
+            }
+            void setRequestObject(jobject requestObject) {
+                requestObject_ = requestObject;
+            }
+            jobject requestObject() {
+                return requestObject_;
+            }
+    };
+
+    static class JavaField {
+
+        jfieldID field_;
+
+    public:
+
+        JavaField(JNIEnv* env, const const char *klass, const char *name, const char *signature) {
+            jclass javaClass = env->FindClass(klass);
+            if (javaClass) {
+                field_ = env->GetFieldID(javaClass, name, signature);
+                env->DeleteLocalRef(javaClass);
+            }
+        }
+
+        jfieldID get() {
+            return field_;
+        }
+    };
+
+    static struct Server {
+
+        using thread_pool_t = ioctx_on_thread_pool_t<external_io_context_for_thread_pool_t>;
+
+        Server(JNIEnv *env) {
+            // Server
+            JNINativeMethod serverMethods[] = {
+                "_run", "([[Ljava/lang/Object;)V", (void *)&Server::run,
+                "_stop", "()V", (void *)&Server::stop,
+            };
+
+            JavaClass server{ env,  "io/webfolder/dakota/Server" };
+            env->RegisterNatives(server.get(), serverMethods, sizeof(serverMethods) / sizeof(serverMethods[0]));
+
+            JNINativeMethod requestImpl[] = {
+                "_createResponse", "(ILjava/lang/String;)V", (void *)&Server::createResponse
+            };
+
+            JavaClass request = { env, "io/webfolder/dakota/RequestImpl" };
+            env->RegisterNatives(request.get(), requestImpl, sizeof(requestImpl) / sizeof(requestImpl[0]));
+
+            JNINativeMethod responseImpl[] = {
+                "_done", "()V", (void *)&Server::done,
+                "_setBody", "(Ljava/lang/String;)V", (void *)&Server::setBody
+            };
+            JavaClass response = { env, "io/webfolder/dakota/ResponseImpl" };
+            env->RegisterNatives(response.get(), responseImpl, sizeof(responseImpl) / sizeof(responseImpl[0]));
+        }
+
+    public:
+
+        static restinio::http_method_t to_method(const char *method) {
+            restinio::http_method_t httpMethod;
+            if (strcmp(method, "get") == 0) {
+                httpMethod = restinio::http_method_t::http_get;
+            }
+            else if (strcmp(method, "post") == 0) {
+                httpMethod = restinio::http_method_t::http_post;
+            }
+            else if (strcmp(method, "delete") == 0) {
+                httpMethod = restinio::http_method_t::http_delete;
+            }
+            else if (strcmp(method, "head") == 0) {
+                httpMethod = restinio::http_method_t::http_head;
+            }
+            return httpMethod;
+        }
+
+        static JNIEXPORT void JNICALL run(JNIEnv *env, jobject that, jobjectArray routes) {
+            auto klassRequest = new JavaClass{ env, global, "io/webfolder/dakota/RequestImpl" };
+            auto constructorRequest = new JavaMethod{ env, global, "io/webfolder/dakota/RequestImpl", "<init>", "(J)V" };
+            auto handleMethod = new JavaMethod{ env, global, "io/webfolder/dakota/Handler", "handle", "(Lio/webfolder/dakota/Request;)Lio/webfolder/dakota/HandlerStatus;" };
+            auto statusField = new JavaField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
+
+            auto executeHandler = [&](jobject handler,
+                restinio::request_handle_t req,
+                restinio::router::route_params_t params) {
+                
+                auto context = new Context{
+                    new restinio::request_handle_t{ req }
+                };
+
+                auto envCurrentThread = *(JNIEnv **)&envCache[std::this_thread::get_id()];
+                if (envCurrentThread == NULL) {
                     return restinio::request_rejected();
                 }
-                return accepted ? restinio::request_accepted() : restinio::request_rejected();
-            });
+                jobject request = envCurrentThread->NewObject(klassRequest->get(),
+                    constructorRequest->get(), (jlong) context);
+                jobject globalRequest = envCurrentThread->NewGlobalRef(request);
+                envCurrentThread->DeleteLocalRef(request);
+                context->setRequestObject(globalRequest);
+                jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod->get(), globalRequest);
+                if (envCurrentThread->ExceptionCheck()) {
+                    envCurrentThread->DeleteGlobalRef(globalRequest);
+                    return restinio::request_rejected();
+                }
+                jint status = (jint)envCurrentThread->GetIntField(handlerStatus, statusField->get());
+                switch (status) {
+                    case HANDLER_STATUS_ACCEPTED: return restinio::request_accepted();
+                    default: return restinio::request_rejected();
+                }
+            };
 
-            env->ReleaseStringUTFChars(method, c_method);
-            env->ReleaseStringUTFChars(path, c_path);
-        }
+            auto router = std::make_unique<restinio::router::express_router_t<>>();
+            jsize len = env->GetArrayLength(routes);
+            for (jsize i = 0; i < len; i++) {
+                jobjectArray next = (jobjectArray)env->GetObjectArrayElement(routes, i);
+                if (env->GetArrayLength(next) != IDX_LEN) {
+                    continue;
+                }
+                String method{ env, (jstring)env->GetObjectArrayElement(next, IDX_METHOD) };
+                String path{ env, (jstring)env->GetObjectArrayElement(next, IDX_PATH) };
+                jobject handler = (jobject)env->GetObjectArrayElement(next, IDX_HNDLR);
+                restinio::http_method_t httpMethod = to_method(method.c_str());
 
-        restinio::asio_ns::io_context ioctx;
-
-        auto pool_size = std::thread::hardware_concurrency();
-
-        using settings_t = restinio::run_on_thread_pool_settings_t<dakota_traits>;
-        using server_t = restinio::http_server_t<dakota_traits>;
-
-        auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
-            .port(8080)
-            .address("localhost")
-            .request_handler(std::move(router));
-
-        thread_pool_t pool{ pool_size, ioctx };
-
-        server_t server{
-            restinio::external_io_context(pool.io_context()),
-            std::forward<settings_t>(settings) };
-
-        server.open_sync();
-        pool.start();
-
-        if (pool.started()) {
-            env->SetLongField(that, reflect.fieldPool(), (jlong)&pool);
-            env->SetLongField(that, reflect.fieldReflectionUtil(), (jlong)&reflect);
-        }
-
-        pool.wait();
-    }
-
-    static JNIEXPORT void JNICALL stop(JNIEnv *env, jobject that) {
-        ReflectionUtil util{ env, false };
-        jlong ptr_pool = env->GetLongField(that, util.fieldPool());
-        auto *pool = *(thread_pool_t **)&ptr_pool;
-        pool->stop();
-        jlong ptr_reflect = env->GetLongField(that, util.fieldReflectionUtil());
-        auto *relect = *(ReflectionUtil **)&ptr_reflect;
-        relect->dispose(env);
-    }
-
-    static JNIEXPORT jlong JNICALL createResponse(JNIEnv *env, jobject that, jint status, jstring reasonPhrase) {
-        ReflectionUtil util{ env, false };
-        jlong ptr_request = env->GetLongField(that, util.fieldRequest());
-        restinio::request_handle_t *request = *(restinio::request_handle_t **)&ptr_request;
-        const char *c_reasonPhrase = env->GetStringUTFChars(reasonPhrase, false);
-        auto response = std::make_unique<restinio::response_builder_t<restinio::restinio_controlled_output_t>>((*request)->create_response(status, c_reasonPhrase));
-        env->ReleaseStringUTFChars(reasonPhrase, c_reasonPhrase);
-        util.dispose(env);
-        jlong ptr_response = (jlong)response.release();
-        return ptr_response;
-    }
-
-    static JNIEXPORT void JNICALL setBody(JNIEnv *env, jobject that, jstring body) {
-        ReflectionUtil util{ env, false };
-        jlong ptr_response = env->GetLongField(that, util.fieldResponse());
-        auto *response = *(restinio::response_builder_t<restinio::restinio_controlled_output_t> **)&ptr_response;
-        const char *c_body = env->GetStringUTFChars(body, false);
-        (*response).set_body(c_body);
-        env->ReleaseStringUTFChars(body, c_body);
-        util.dispose(env);
-    }
-
-    static JNIEXPORT void JNICALL done(JNIEnv *env, jobject that) {
-        ReflectionUtil util{ env, false };
-        jlong ptr_response = env->GetLongField(that, util.fieldResponse());
-        auto *response = *(restinio::response_builder_t<restinio::restinio_controlled_output_t> **)&ptr_response;
-        (*response).done([](const auto & ec) {
-            auto env_done = *(JNIEnv **)&envCache[std::this_thread::get_id()];
-            if (env_done) {
-                /*if (requestImpl != NULL) {
-                    env_done->DeleteGlobalRef(requestImpl);
-                }*/
+                router->add_handler(httpMethod, path.c_str(), [executeHandler, handler](auto req, auto params) {
+                    return executeHandler(handler, std::move(req), std::move(params));
+                });
             }
-        });
-        util.dispose(env);
-        delete response;
-    }
-};
 
-JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
-    JNIEnv* env;
-    if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_8) != JNI_OK) {
-        return JNI_EVERSION;
+            auto pool_size = std::thread::hardware_concurrency();
+
+            using settings_t = restinio::run_on_thread_pool_settings_t<dakota_traits>;
+            using server_t = restinio::http_server_t<dakota_traits>;
+
+            auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
+                .port(8080)
+                .address("localhost")
+                .cleanup_func([klassRequest, constructorRequest, handleMethod, statusField]() {
+                    delete klassRequest, constructorRequest, handleMethod, statusField;
+                })
+                .request_handler(std::move(router));
+
+            restinio::asio_ns::io_context ioctx;
+            thread_pool_t pool{ pool_size, ioctx };
+
+            server_t server{
+                restinio::external_io_context(ioctx),
+                std::forward<settings_t>(settings) };
+
+            server.open_sync();
+            pool.start();
+
+            if (pool.started()) {
+                JavaField field = { env, "io/webfolder/dakota/Server", "pool", "J" };
+                env->SetLongField(that, field.get(), (jlong)&pool);
+            }
+
+            pool.wait();
+        }
+
+        static JNIEXPORT void JNICALL stop(JNIEnv *env, jobject that) {
+            JavaField field = { env, "io/webfolder/dakota/Server", "pool", "J" };
+            jlong ptr = env->GetLongField(that, field.get());
+            auto *pool = *(thread_pool_t **)&ptr;
+            pool->stop();
+        }
+
+        static JNIEXPORT void JNICALL createResponse(JNIEnv *env, jobject that, jint status, jstring reasonPhrase) {
+            JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+            jlong ptr = env->GetLongField(that, field.get());
+            auto *context = *(Context **)&ptr;
+            restinio::request_handle_t *request = context->request();
+            String str{ env, reasonPhrase };
+            auto response = std::make_unique<restinio::response_builder_t<restinio::restinio_controlled_output_t>>(
+                (*request)->create_response(status, str.c_str()));
+            context->setResponse(response.release());
+        }
+
+        static JNIEXPORT void JNICALL setBody(JNIEnv *env, jobject that, jstring body) {
+            JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
+            jlong ptr = env->GetLongField(that, field.get());
+            auto *context = *(Context **)&ptr;
+            String str{ env, body };
+            context->response()->set_body(str.c_str());
+        }
+
+        static JNIEXPORT void JNICALL done(JNIEnv *env, jobject that) {
+            JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
+            jlong ptr = env->GetLongField(that, field.get());
+            auto *context = *(Context **)&ptr;     
+            context->response()->done([context, env](const auto & ec) {
+                env->DeleteGlobalRef(context->requestObject());
+                delete context;
+            });
+        }
+    };
+}
+
+extern "C" {
+    JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
+        JNIEnv* env;
+        if (vm->GetEnv(reinterpret_cast<void**>(&env), JNI_VERSION_1_8) != JNI_OK) {
+            return JNI_EVERSION;
+        }
+        dakota::jvm = vm;
+        dakota::Server server{ env };
+        return JNI_VERSION_1_8;
     }
-    jvm = vm;
-    Server server{ env };
-    return JNI_VERSION_1_8;
 }

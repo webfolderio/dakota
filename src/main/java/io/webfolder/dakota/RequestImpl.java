@@ -4,20 +4,20 @@ import static io.webfolder.dakota.HttpStatus.OK;
 
 public class RequestImpl implements Request {
 
-    private final long request;
-
-    public RequestImpl(long request) {
-        this.request = request;
+    private final long context;
+    
+    public RequestImpl(long context) {
+        this.context = context;
     }
 
     @Override
     public Response createResponse(HttpStatus status) {
-        long peer = _createResponse(status.value, status.reasonPhrase);
-        ResponseImpl response = new ResponseImpl(peer, this);
+        _createResponse(status.value, status.reasonPhrase);
+        ResponseImpl response = new ResponseImpl(context);
         return response;
     }
 
-    private native long _createResponse(int status, String reasonPhrase);
+    private native void _createResponse(int status, String reasonPhrase);
 
     @Override
     public Response ok() {

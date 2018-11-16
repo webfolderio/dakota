@@ -1,6 +1,5 @@
 package io.webfolder.dakota;
 
-import static java.lang.System.arraycopy;
 import static java.lang.System.load;
 
 import java.nio.file.Paths;
@@ -11,7 +10,7 @@ public class Server {
         load(Paths.get(".")
             .toAbsolutePath()
             .normalize()
-            .resolve("build-debug/Debug/dakota.dll")
+            .resolve("native/build/Release/dakota.dll")
             .toString());
     }
 
@@ -23,8 +22,6 @@ public class Server {
 
     private long pool;
 
-    private long reflectionUtil;
-
     // ------------------------------------------------------------------------
     // private native methods
     // ------------------------------------------------------------------------
@@ -32,41 +29,8 @@ public class Server {
 
     private native void _stop();
 
-    // ------------------------------------------------------------------------
-    // public methods
-    // ------------------------------------------------------------------------
-
-    public Server get(String path, RouteHandler handler) {
-        addHandler("get", path, handler);
-        return this;
-    }
-
-    public Server post(String path, RouteHandler handler) {
-        addHandler("post", path, handler);
-        return this;
-    }
-
-    public Server delete(String path, RouteHandler handler) {
-        addHandler("delete", path, handler);
-        return this;
-    }
-
-    public Server head(String path, RouteHandler handler) {
-        addHandler("head", path, handler);
-        return this;
-    }
-
-    private void addHandler(String method, String path, RouteHandler handler) {
-        Object[][] temp = new Object[routes.length + 1][];
-        arraycopy(routes, 0, temp, 0, routes.length);
-        temp[routes.length] = new Object[] {
-            method, path, handler
-        };
-        routes = temp;
-    }
-
-    public void run() {
-        _run(routes);
+    public void run(Router router) {
+        _run(router.getRoutes());
     }
 
     public void stop() {

@@ -2,13 +2,10 @@ package io.webfolder.dakota;
 
 public class ResponseImpl implements Response {
 
-    private final long response;
+    private final long context;
 
-    private Request request;
-
-    public ResponseImpl(long response, Request request) {
-        this.response = response;
-        this.request = request;
+    public ResponseImpl(long context) {
+        this.context = context;
     }
 
     @Override
