@@ -27,7 +27,7 @@ build_script:
   - cd ..\..
   - mvn -DskipTests -q clean package
 
-  test_script:
+test_script:
   - mvn -q surefire-report:report
 
 after_test:
