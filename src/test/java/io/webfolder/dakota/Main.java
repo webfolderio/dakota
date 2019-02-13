@@ -1,6 +1,7 @@
 package io.webfolder.dakota;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Main {
 
@@ -9,12 +10,11 @@ public class Main {
 
         Router router = new Router();
 
+        AtomicInteger counter = new AtomicInteger();
+
         router.get("/foo", request -> {
-            System.out.println("ok");
             Response response = request.ok();
-            System.out.println("body");
-            response.setBody("foo");
-            System.out.println("done");
+            response.setBody("counter: " + counter.incrementAndGet());
             response.done();
             return HandlerStatus.accepted;
         });

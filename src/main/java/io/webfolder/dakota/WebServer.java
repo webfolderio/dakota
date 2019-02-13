@@ -1,6 +1,18 @@
 package io.webfolder.dakota;
 
+import static java.lang.System.load;
+
+import java.nio.file.Paths;
+
 public class WebServer {
+
+    static {
+        load(Paths.get(".")
+            .toAbsolutePath()
+            .normalize()
+            .resolve("native/build-debug/Debug/dakota.dll")
+            .toString());
+    }
 
     private Object[][] routes = new Object[0][];
 
