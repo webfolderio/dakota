@@ -1,16 +1,17 @@
 package io.webfolder.dakota;
 
 import static io.webfolder.dakota.HandlerStatus.accepted;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
 import okhttp3.OkHttpClient;
+import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
 
 public class TestHttpGet {
@@ -25,7 +26,7 @@ public class TestHttpGet {
 
         router.get("/foo", context -> {
             Response response = context.ok();
-            response.setBody("hello, aworld!");
+            response.setBody("hello, world!");
             response.done();
             
             return accepted;
@@ -43,11 +44,15 @@ public class TestHttpGet {
 
     @Test
     public void test() throws IOException {
-        OkHttpClient client = new OkHttpClient.Builder().writeTimeout(1, TimeUnit.DAYS).readTimeout(1, TimeUnit.DAYS).connectTimeout(1, TimeUnit.DAYS).build();
+        OkHttpClient client = new Builder()
+                                    .writeTimeout(10, SECONDS)
+                                    .readTimeout(1, SECONDS)
+                                    .connectTimeout(10, SECONDS
+                                ).build();
         Request req = new okhttp3.Request.Builder()
                                 .url("http://localhost:8080/foo")
                                 .build();
         String body = client.newCall(req).execute().body().string();
-        assertEquals("hello, aworld!", body);
+        assertEquals("hello, world!", body);
     }
 }

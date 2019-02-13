@@ -1,15 +1,7 @@
 version: 1.0.'{build}'
 image: Visual Studio 2017
 
-branches:
-  only:
-    - master
-
-skip_tags: true
-skip_non_tags: true
-skip_branch_with_pr: true
 platform: x64
-configuration: Release
 
 cache: c:\tools\vcpkg\installed\
 
@@ -19,12 +11,7 @@ environment:
 
 build_script:
   - vcpkg.exe install restinio:x64-windows-static
-  - cd native
-  - if not exist .\build mkdir build
-  - cd build
-  - cmake .. -G"Visual Studio 15 2017 Win64" -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static
-  - cmake --build . --config Release
-  - cd ..\..
+  - scripts\build.bat
   - mvn -DskipTests -q clean package
 
 test_script:
