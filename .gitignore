@@ -29,3 +29,5 @@ hs_err_pid*
 /build
 /native/build
 /native/build-debug
+/src/main/resources/META-INF/.keep
+/src/main/resources/META-INF/dakota.dll
