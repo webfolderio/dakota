@@ -11,7 +11,7 @@
 static std::atomic<JavaVM*> jvm;
 static std::map<std::thread::id, jlong> envCache;
 
-static class external_io_context_for_thread_pool_t
+class external_io_context_for_thread_pool_t
 {
     restinio::asio_ns::io_context & m_ioctx;
 
@@ -143,7 +143,7 @@ static enum ReflectionCacheType {
     local
 };
 
-static class String {
+class String {
     JNIEnv * env_;
     jstring java_str_;
     const char * str_;
@@ -159,7 +159,7 @@ public:
     const char * c_str() const noexcept { return str_; }
 };
 
-static class JavaClass {
+class JavaClass {
 
     JNIEnv *env_;
     ReflectionCacheType type_;
@@ -195,7 +195,7 @@ public:
     }
 };
 
-static class JavaMethod {
+class JavaMethod {
 
     JNIEnv *env_;
     ReflectionCacheType type_;
@@ -238,7 +238,7 @@ public:
     }
 };
 
-static class Context {
+class Context {
     restinio::request_handle_t *req_;
     restinio::response_builder_t<restinio::restinio_controlled_output_t> *res_;
     jobject requestObject_;
@@ -269,7 +269,7 @@ public:
     }
 };
 
-static class JavaField {
+class JavaField {
 
     jfieldID field_;
 
@@ -288,7 +288,7 @@ public:
     }
 };
 
-static struct Restinio {
+struct Restinio {
 
     using thread_pool_t = ioctx_on_thread_pool_t<external_io_context_for_thread_pool_t>;
 
