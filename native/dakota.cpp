@@ -134,11 +134,11 @@ private:
     status_t m_status;
 };
 
-static struct dakota_traits : public restinio::default_traits_t {
+struct dakota_traits : public restinio::default_traits_t {
     using request_handler_t = restinio::router::express_router_t<>;
 };
 
-static enum ReflectionCacheType {
+enum ReflectionCacheType {
     global,
     local
 };
