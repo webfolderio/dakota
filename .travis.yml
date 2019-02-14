@@ -1,6 +1,5 @@
 matrix:
   include:
-     env: CC=gcc-8 CXX=g++-8
      language: java
 
 cache:
@@ -8,15 +7,14 @@ cache:
   - $HOME/.m2
 
 install:
-  - sudo apt-get install g++8
-
-script:
   - git clone https://github.com/Microsoft/vcpkg.git
   - cd vcpkg
   - ./bootstrap-vcpkg.sh
   - ./vcpkg integrate install
   - ./vcpkg install restinio:x64-linux
   - cd ..
+
+script:
   - cd native
   - mkdir build
   - cd build
