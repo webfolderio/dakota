@@ -9,11 +9,17 @@ jobs:
     steps:
       - checkout
       - run:
+          name: install g++8
+          command: 'sudo apt-get install g++8'
+      - run:
           name: clone vcpkg
           command: 'git clone https://github.com/Microsoft/vcpkg.git'
       - run:
           name: install vcpkg
           command: 'cd vcpkg && ./bootstrap-vcpkg.sh && ./vcpkg integrate install'
+      - run:
+          name: build
+          command: 'cd scripts && ./build-circleci.sh'
 
       - restore_cache:
           keys:
