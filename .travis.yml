@@ -1,6 +1,7 @@
 matrix:
   include:
      language: java
+     env: CC=gcc-8 CXX=g++-8
 
 cache:
   directories:
@@ -26,3 +27,7 @@ script:
   - make
   - strip libdakota.so
   - cp libdakota.so ../../src/main/resources/META-INF
+  - cd ..
+  - cd ..
+  - mvn -q -DskipTests package
+  - mvn test
