@@ -1,11 +1,10 @@
 package io.webfolder.dakota;
 
-import static java.lang.System.getProperty;
+import static java.io.File.pathSeparatorChar;
 import static java.lang.System.load;
 import static java.nio.file.Files.copy;
 import static java.nio.file.Files.createTempFile;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static java.util.Locale.ENGLISH;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,16 +12,13 @@ import java.nio.file.Path;
 
 public class WebServer {
 
-    private static final String OS = getProperty("os.name").toLowerCase(ENGLISH);
-
-    private static final boolean WINDOWS = OS.startsWith("windows");
-
     static {
-        ClassLoader cl = WebServer.class.getClassLoader();
         Path libFile;
-        String library = WINDOWS ? "META-INF/dakota.dll" : "META-INF/dakota.so";
+        ClassLoader cl = WebServer.class.getClassLoader();
+        boolean windows = ';' == pathSeparatorChar;
+        String library = windows ? "META-INF/dakota.dll" : "META-INF/dakota.so";
         try (InputStream is = cl.getResourceAsStream(library)) {
-            libFile = createTempFile("dakota", WINDOWS ? ".dll" : ".so");
+            libFile = createTempFile("dakota", windows ? ".dll" : ".so");
             copy(is, libFile, REPLACE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -34,7 +30,7 @@ public class WebServer {
     private Object[][] routes = new Object[0][];
 
     // ------------------------------------------------------------------------
-    // native peers
+    // native peer
     // ------------------------------------------------------------------------
 
     private long pool;

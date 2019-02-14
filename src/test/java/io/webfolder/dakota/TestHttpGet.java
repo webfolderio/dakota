@@ -28,7 +28,6 @@ public class TestHttpGet {
             Response response = context.ok();
             response.setBody("hello, world!");
             response.done();
-            
             return accepted;
         });
 
@@ -52,7 +51,10 @@ public class TestHttpGet {
         Request req = new okhttp3.Request.Builder()
                                 .url("http://localhost:8080/foo")
                                 .build();
-        String body = client.newCall(req).execute().body().string();
+        String body = client.newCall(req)
+                                .execute()
+                                .body()
+                            .string();
         assertEquals("hello, world!", body);
     }
 }
