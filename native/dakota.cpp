@@ -275,7 +275,7 @@ static class JavaField {
 
 public:
 
-    JavaField(JNIEnv* env, const const char *klass, const char *name, const char *signature) {
+    JavaField(JNIEnv* env, const char *klass, const char *name, const char *signature) {
         jclass javaClass = env->FindClass(klass);
         if (javaClass) {
             field_ = env->GetFieldID(javaClass, name, signature);
