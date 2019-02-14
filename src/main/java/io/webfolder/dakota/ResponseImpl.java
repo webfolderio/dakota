@@ -1,6 +1,6 @@
 package io.webfolder.dakota;
 
-public class ResponseImpl implements Response {
+class ResponseImpl implements Response {
 
     private final long context;
 

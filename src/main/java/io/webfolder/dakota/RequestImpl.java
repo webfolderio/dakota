@@ -2,7 +2,7 @@ package io.webfolder.dakota;
 
 import static io.webfolder.dakota.HttpStatus.OK;
 
-public class RequestImpl implements Request {
+class RequestImpl implements Request {
 
     private final long context;
     
