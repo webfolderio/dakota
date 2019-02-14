@@ -433,8 +433,9 @@ public:
         auto *context = *(Context **)&ptr;
         restinio::request_handle_t *request = context->request();
         String str{ env, reasonPhrase };
+        restinio::http_status_line_t status_line = restinio::http_status_line_t{ restinio::http_status_code_t { (uint16_t) status }, str.c_str() };
         auto response = std::make_unique<restinio::response_builder_t<restinio::restinio_controlled_output_t>>(
-            (*request)->create_response(status, str.c_str()));
+            (*request)->create_response(status_line));
         context->setResponse(response.release());
     }
 

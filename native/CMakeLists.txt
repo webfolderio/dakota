@@ -13,6 +13,7 @@ if(MSVC)
     set(CMAKE_CXX_FLAGS_DEBUG "/ZI /Od /MTd")
     set_source_files_properties(stdafx.cpp PROPERTIES COMPILE_FLAGS "/Ycstdafx.h")
     set_source_files_properties(dakota.cpp PROPERTIES COMPILE_FLAGS "/Yustdafx.h")
+    add_definitions(-D_WIN32_WINNT=0x0601)
 endif()
 
 find_package(JNI REQUIRED)
