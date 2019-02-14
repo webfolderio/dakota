@@ -9,9 +9,6 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install g++7
-          command: 'sudo apt-get install g++-7 -y'
-      - run:
           name: clone vcpkg
           command: 'git clone https://github.com/Microsoft/vcpkg.git'
       - run:
