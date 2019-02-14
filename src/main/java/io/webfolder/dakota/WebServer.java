@@ -16,7 +16,7 @@ public class WebServer {
         Path libFile;
         ClassLoader cl = WebServer.class.getClassLoader();
         boolean windows = ';' == pathSeparatorChar;
-        String library = windows ? "META-INF/dakota.dll" : "META-INF/dakota.so";
+        String library = windows ? "META-INF/dakota.dll" : "META-INF/libdakota.so";
         try (InputStream is = cl.getResourceAsStream(library)) {
             libFile = createTempFile("dakota", windows ? ".dll" : ".so");
             copy(is, libFile, REPLACE_EXISTING);
