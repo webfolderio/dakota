@@ -9,12 +9,6 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Add toolchain repo
-          command: 'sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y'
-      - run:
-          name: Update packages
-          command: 'sudo apt-get update -y'
-      - run:
           name: Install g++7
           command: 'sudo apt-get install g++-7 -y'
       - run:
