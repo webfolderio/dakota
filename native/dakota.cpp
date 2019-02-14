@@ -450,8 +450,8 @@ public:
         JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto *context = *(Context **)&ptr;
+        env->DeleteGlobalRef(context->requestObject());
         context->response()->done([context, env](const auto & ec) {
-            // env->DeleteGlobalRef(context->requestObject());
             delete context;
         });
     }
