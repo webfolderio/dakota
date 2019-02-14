@@ -1,0 +1,14 @@
+matrix:
+  include:
+     env: CC=gcc-8 CXX=g++-8
+     language: java
+
+cache:
+  directories:
+  - $HOME/.m2
+
+install:
+  - sudo apt-get install g++8
+
+script:
+  - cd native && ./build-circleci.sh && cd ..
