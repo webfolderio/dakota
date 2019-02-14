@@ -12,5 +12,6 @@ cmake --build . --target dakota --config Release
 cmake -- build .
 cmake --build . --target dakota --config Debug
 cmake -- build .
+echo %cd%
 copy /Y Release\dakota.dll ..\..\src\main\resources\META-INF
 cd %curdir%
