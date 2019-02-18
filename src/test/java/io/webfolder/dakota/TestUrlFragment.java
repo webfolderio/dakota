@@ -8,6 +8,7 @@ import java.io.IOException;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import okhttp3.OkHttpClient;
@@ -44,6 +45,7 @@ public class TestUrlFragment {
     }
 
     @Test
+    @Ignore
     public void test() throws IOException {
         OkHttpClient client = new Builder()
                                     .writeTimeout(10, SECONDS)

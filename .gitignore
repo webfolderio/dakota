@@ -31,3 +31,7 @@ hs_err_pid*
 /native/build-debug
 /src/main/resources/META-INF/dakota.dll
 /src/test/java/io/webfolder/dakota/Main.java
+/src/main/resources/META-INF/dakota.lib
+/src/main/resources/META-INF/dakota.pdb
+/src/main/resources/META-INF/dakota.exp
+/src/main/resources/META-INF/dakota.ilk

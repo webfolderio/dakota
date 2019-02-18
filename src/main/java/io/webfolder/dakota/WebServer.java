@@ -12,7 +12,6 @@ import java.nio.file.Path;
 
 public class WebServer {
 
-
     static {
         Path libFile;
         ClassLoader cl = WebServer.class.getClassLoader();
