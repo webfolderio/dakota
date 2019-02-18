@@ -30,4 +30,4 @@ script:
   - cd ..
   - cd ..
   - mvn -q -DskipTests package
-  - mvn test
+  - mvn -q test

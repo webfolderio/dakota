@@ -294,7 +294,7 @@ struct Restinio {
 
     Restinio(JNIEnv *env) {
         JNINativeMethod serverMethods[] = {
-            "_run", "([[Ljava/lang/Object;)V", (void *)&Restinio::run,
+            "_run", "([[Ljava/lang/Object;Lio/webfolder/dakota/Handler;)V", (void *)&Restinio::run,
             "_stop", "()V", (void *)&Restinio::stop,
         };
 
@@ -338,16 +338,15 @@ public:
         return httpMethod;
     }
 
-    static void run(JNIEnv *env, jobject that, jobjectArray routes) {
+    static void run(JNIEnv *env, jobject that, jobjectArray routes, jobject nonMatchedHandler) {
         auto klassRequest = new JavaClass{ env, global, "io/webfolder/dakota/RequestImpl" };
         auto constructorRequest = new JavaMethod{ env, global, "io/webfolder/dakota/RequestImpl", "<init>", "(J)V" };
         auto handleMethod = new JavaMethod{ env, global, "io/webfolder/dakota/Handler", "handle", "(Lio/webfolder/dakota/Request;)Lio/webfolder/dakota/HandlerStatus;" };
         auto statusField = new JavaField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
 
-        auto executeHandler = [&](jobject handler,
+        auto execute = [&](jobject handler,
             restinio::request_handle_t req,
             restinio::router::route_params_t params) {
-
             auto context = new Context{
                 new restinio::request_handle_t{ req }
             };
@@ -371,8 +370,13 @@ public:
             default: return restinio::request_rejected();
             }
         };
-
         auto router = std::make_unique<restinio::router::express_router_t<>>();
+        if (nonMatchedHandler != nullptr) {
+            router->non_matched_request_handler(
+                [execute, nonMatchedHandler](auto req) {
+                return execute(nonMatchedHandler, std::move(req), std::move(restinio::router::route_params_t{}));
+            });
+        }
         jsize len = env->GetArrayLength(routes);
         for (jsize i = 0; i < len; i++) {
             jobjectArray next = (jobjectArray)env->GetObjectArrayElement(routes, i);
@@ -384,8 +388,8 @@ public:
             jobject handler = (jobject)env->GetObjectArrayElement(next, IDX_HNDLR);
             restinio::http_method_t httpMethod = to_method(method.c_str());
 
-            router->add_handler(httpMethod, path.c_str(), [executeHandler, handler](auto req, auto params) {
-                return executeHandler(handler, std::move(req), std::move(params));
+            router->add_handler(httpMethod, path.c_str(), [execute, handler](auto req, auto params) {
+                return execute(handler, std::move(req), std::move(params));
             });
         }
 

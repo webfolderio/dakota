@@ -38,12 +38,16 @@ public class WebServer {
     // ------------------------------------------------------------------------
     // private native methods
     // ------------------------------------------------------------------------
-    private native void _run(Object[][] routes);
+    private native void _run(Object[][] routes, Handler nonMatchedHandler);
 
     private native void _stop();
 
     public void run(Router router) {
-        _run(router.getRoutes());
+        _run(router.getRoutes(), null);
+    }
+
+    public void run(Router router, Handler nonMatchedHandler) {
+        _run(router.getRoutes(), nonMatchedHandler);
     }
 
     public void stop() {
