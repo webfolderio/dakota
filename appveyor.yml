@@ -18,7 +18,7 @@ build_script:
   - mvn -DskipTests -q clean package
 
 test_script:
-  - mvn surefire-report:report
+  - mvn -q surefire-report:report
 
 after_test:
   - ps: |
@@ -29,5 +29,5 @@ after_test:
         }
 
 artifacts:
-  - path: native\build\Release\dakota.dll
-    name: dakota x64-windows dll
+  - path: target\dakota-1.0.0-SNAPSHOT.jar
+    name: dakota library (Windows x64)
