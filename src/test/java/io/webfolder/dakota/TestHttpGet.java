@@ -43,18 +43,10 @@ public class TestHttpGet {
 
     @Test
     public void test() throws IOException {
-        OkHttpClient client = new Builder()
-                                    .writeTimeout(10, SECONDS)
-                                    .readTimeout(10, SECONDS)
-                                    .connectTimeout(10, SECONDS
-                                ).build();
-        Request req = new okhttp3.Request.Builder()
-                                .url("http://localhost:8080/foo")
-                                .build();
-        String body = client.newCall(req)
-                                .execute()
-                                .body()
-                            .string();
+        OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
+                .connectTimeout(10, SECONDS).build();
+        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo").build();
+        String body = client.newCall(req).execute().body().string();
         assertEquals("hello, world!", body);
     }
 }

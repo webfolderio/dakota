@@ -8,7 +8,7 @@ import java.util.Map;
 class RequestImpl implements Request {
 
     private final long context;
-    
+
     public RequestImpl(long context) {
         this.context = context;
     }
@@ -25,8 +25,6 @@ class RequestImpl implements Request {
     private native Map<String, Object> _query();
 
     private native Map<String, Object> _header();
-
-    private native String _fragment();
 
     private native String _target();
 
@@ -51,11 +49,6 @@ class RequestImpl implements Request {
             return emptyMap();
         }
         return map;
-    }
-
-    @Override
-    public String fragment() {
-        return _fragment();
     }
 
     @Override

@@ -29,9 +29,7 @@ public class Router {
     private void addHandler(String method, String path, Handler handler) {
         Object[][] copy = new Object[routes.length + 1][];
         arraycopy(routes, 0, copy, 0, routes.length);
-        copy[routes.length] = new Object[] {
-            method, path, handler
-        };
+        copy[routes.length] = new Object[] { method, path, handler };
         routes = copy;
     }
 

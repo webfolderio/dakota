@@ -305,7 +305,6 @@ struct Restinio {
             "_createResponse", "(ILjava/lang/String;)V", (void *)&Restinio::createResponse,
             "_query", "()Ljava/util/Map;", (void *)&Restinio::query,
             "_header", "()Ljava/util/Map;", (void *)&Restinio::header,
-            "_fragment", "()Ljava/lang/String;", (void *)&Restinio::fragment,
             "_target", "()Ljava/lang/String;", (void *)&Restinio::target
         };
 
@@ -487,15 +486,6 @@ public:
                 env->CallObjectMethod(map, put.get(), j_name, j_value);
             });
         return map;
-    }
-
-    static jstring fragment(JNIEnv *env, jobject that) {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
-        auto *context = *(Context **)&ptr;
-        restinio::request_handle_t *request = context->request();
-        auto fragment = restinio::cast_to<std::string>((*request)->header().fragment());
-        return env->NewStringUTF(fragment.c_str());
     }
 
     static jstring target(JNIEnv *env, jobject that) {

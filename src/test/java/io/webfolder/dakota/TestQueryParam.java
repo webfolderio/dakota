@@ -47,16 +47,10 @@ public class TestQueryParam {
 
     @Test
     public void test() throws IOException {
-        OkHttpClient client = new Builder()
-                                    .writeTimeout(240, SECONDS)
-                                    .readTimeout(240, SECONDS)
-                                    .connectTimeout(240, SECONDS
-                                ).build();
-        Request req = new okhttp3.Request.Builder()
-                                .url("http://localhost:8080/foo?foo=bar&abc=123")
-                                .build();
-        client.newCall(req)
-                .execute();
+        OkHttpClient client = new Builder().writeTimeout(240, SECONDS).readTimeout(240, SECONDS)
+                .connectTimeout(240, SECONDS).build();
+        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo?foo=bar&abc=123").build();
+        client.newCall(req).execute();
         assertNotNull(queryMap);
         assertEquals(2, queryMap.size());
         assertEquals("bar", queryMap.get("foo"));
