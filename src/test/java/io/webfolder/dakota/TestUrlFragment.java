@@ -14,9 +14,11 @@ import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
 
-public class TestHttpGet {
+public class TestUrlFragment {
 
     private WebServer server;
+
+    private String fragment;
 
     @Before
     public void init() {
@@ -24,9 +26,9 @@ public class TestHttpGet {
 
         Router router = new Router();
 
-        router.get("/foo", context -> {
-            Response response = context.ok();
-            response.setBody("hello, world!");
+        router.get("/test", request -> {
+            Response response = request.ok();
+            fragment = request.fragment();
             response.done();
             return accepted;
         });
@@ -48,13 +50,12 @@ public class TestHttpGet {
                                     .readTimeout(10, SECONDS)
                                     .connectTimeout(10, SECONDS
                                 ).build();
+
         Request req = new okhttp3.Request.Builder()
-                                .url("http://localhost:8080/foo")
+                                .url("http://localhost:8080/test#my-fragment")
                                 .build();
-        String body = client.newCall(req)
-                                .execute()
-                                .body()
-                            .string();
-        assertEquals("hello, world!", body);
+        client.newCall(req).execute();
+
+        assertEquals("my-fragment", fragment);
     }
 }
