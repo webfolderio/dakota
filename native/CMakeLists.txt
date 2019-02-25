@@ -41,6 +41,10 @@ if(MSVC)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_BINARY_DIR}/../../src/main/resources/META-INF)
 endif(MSVC)
 
+if (GCC)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-write-strings")
+endif(GCC)
+
 add_library(dakota SHARED stdafx.h stdafx.cpp dakota.cpp)
 
 target_link_libraries(dakota PRIVATE restinio::restinio Threads::Threads)
