@@ -171,8 +171,8 @@ public:
     JavaClass(JavaClass &&) = delete;
     ~JavaClass() {
         switch (type_) {
-        case global: env_->DeleteGlobalRef(klass_);
-        default: env_->DeleteLocalRef(klass_);
+            case global: env_->DeleteGlobalRef(klass_); break;
+            default: env_->DeleteLocalRef(klass_);
         }
     }
 
@@ -207,8 +207,8 @@ public:
     JavaMethod(JavaMethod &&) = delete;
     ~JavaMethod() {
         switch (type_) {
-        case global: env_->DeleteGlobalRef((jobject)method_);
-        default: env_->DeleteLocalRef((jobject)method_);
+            case global: env_->DeleteGlobalRef((jobject)method_); break;
+            default: env_->DeleteLocalRef((jobject)method_);
         }
     }
 
@@ -366,8 +366,8 @@ public:
             }
             jint status = (jint)envCurrentThread->GetIntField(handlerStatus, statusField->get());
             switch (status) {
-            case HANDLER_STATUS_ACCEPTED: return restinio::request_accepted();
-            default: return restinio::request_rejected();
+                case HANDLER_STATUS_ACCEPTED: return restinio::request_accepted();
+                default: return restinio::request_rejected();
             }
         };
         auto router = std::make_unique<restinio::router::express_router_t<>>();
