@@ -23,11 +23,6 @@ find_package(fmt REQUIRED)
 find_package(restinio REQUIRED)
 find_package(Threads REQUIRED)
 
-message(STATUS "JNI_INCLUDE_DIRS=${JNI_INCLUDE_DIRS}")
-message(STATUS "JNI_LIBRARIES=${JNI_LIBRARIES}")
-message(STATUS "JAVA_INCLUDE_PATH=${JAVA_INCLUDE_PATH}")
-message(STATUS "JAVA_INCLUDE_PATH2=${JAVA_INCLUDE_PATH2}")
-
 INCLUDE_DIRECTORIES(${JAVA_INCLUDE_PATH})
 INCLUDE_DIRECTORIES(${JAVA_INCLUDE_PATH2})
 
@@ -40,10 +35,6 @@ if(MSVC)
   set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${PROJECT_BINARY_DIR}/../../src/main/resources/META-INF)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_BINARY_DIR}/../../src/main/resources/META-INF)
 endif(MSVC)
-
-if (GCC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-write-strings")
-endif(GCC)
 
 add_library(dakota SHARED stdafx.h stdafx.cpp dakota.cpp)
 

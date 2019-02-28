@@ -65,8 +65,8 @@ public:
 
                         JavaVM *vm = jvm.load();
                         if (vm) {
-                            JNIEnv* env = NULL;
-                            jint ret = vm->AttachCurrentThreadAsDaemon((void**)&env, NULL);
+                            JNIEnv* env = nullptr;
+                            jint ret = vm->AttachCurrentThreadAsDaemon((void**)&env, nullptr);
                             if (ret == JNI_OK) {
                                 envCache[std::this_thread::get_id()] = (jlong)env;
 
@@ -244,11 +244,15 @@ class Context {
     jobject requestObject_;
 
 public:
-    Context(const JavaMethod &) = delete;
-    Context(JavaMethod &&) = delete;
+    Context(const Context &) = delete;
+    Context(Context &&) = delete;
     ~Context() {
         delete req_;
         delete res_;
+        auto env = *(JNIEnv**)&envCache[std::this_thread::get_id()];
+        if (env != nullptr) {
+            env->DeleteGlobalRef(requestObject_);        
+        }
     }
     Context(restinio::request_handle_t *req) : req_(req) {
     }
@@ -343,7 +347,6 @@ public:
         auto constructorRequest = new JavaMethod{ env, global, "io/webfolder/dakota/RequestImpl", "<init>", "(J)V" };
         auto handleMethod = new JavaMethod{ env, global, "io/webfolder/dakota/Handler", "handle", "(Lio/webfolder/dakota/Request;)Lio/webfolder/dakota/HandlerStatus;" };
         auto statusField = new JavaField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
-
         auto execute = [&](jobject handler,
             restinio::request_handle_t req,
             restinio::router::route_params_t params) {
@@ -351,17 +354,17 @@ public:
                 new restinio::request_handle_t{ req }
             };
             auto envCurrentThread = *(JNIEnv **)&envCache[std::this_thread::get_id()];
-            if (envCurrentThread == NULL) {
+            if (envCurrentThread == nullptr) {
+                delete context;
                 return restinio::request_rejected();
             }
-            jobject request = envCurrentThread->NewObject(klassRequest->get(),
-                constructorRequest->get(), (jlong)context);
+            jobject request = envCurrentThread->NewObject(klassRequest->get(), constructorRequest->get(), (jlong)context);
             jobject globalRequest = envCurrentThread->NewGlobalRef(request);
             envCurrentThread->DeleteLocalRef(request);
             context->setRequestObject(globalRequest);
             jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod->get(), globalRequest);
             if (envCurrentThread->ExceptionCheck()) {
-                envCurrentThread->DeleteGlobalRef(globalRequest);
+                delete context;
                 return restinio::request_rejected();
             }
             jint status = (jint)envCurrentThread->GetIntField(handlerStatus, statusField->get());
@@ -513,8 +516,7 @@ public:
         JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto *context = *(Context **)&ptr;
-        env->DeleteGlobalRef(context->requestObject());
-        context->response()->done([context, env](const auto & ec) {
+        context->response()->done([context](const auto & ec) {
             delete context;
         });
     }
