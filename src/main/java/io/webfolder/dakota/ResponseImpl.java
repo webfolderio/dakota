@@ -14,6 +14,12 @@ class ResponseImpl implements Response {
 
     private native void _appendHeader(String name, String value);
 
+    private native void _closeConnection();
+
+    private native void _keepAliveConnection();
+
+    private native void _appendHeaderDateField();
+
     @Override
     public void setBody(String content) {
         _setBody(content);
@@ -27,5 +33,20 @@ class ResponseImpl implements Response {
     @Override
     public void appendHeader(String name, String value) {
         _appendHeader(name, value);
+    }
+
+    @Override
+    public void closeConnection() {
+        _closeConnection();
+    }
+
+    @Override
+    public void keepAliveConnection() {
+        _keepAliveConnection();
+    }
+
+    @Override
+    public void appendHeaderDateField() {
+        _appendHeaderDateField();
     }
 }

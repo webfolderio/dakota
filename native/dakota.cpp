@@ -402,7 +402,10 @@ struct Restinio {
         JNINativeMethod responseImpl[] = {
             "_done", "()V", (void*)&Restinio::done,
             "_setBody", "(Ljava/lang/String;)V", (void*)&Restinio::setBody,
-            "_appendHeader", "(Ljava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader
+            "_appendHeader", "(Ljava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader,
+            "_closeConnection", "()V", (void*)&Restinio::closeConnection,
+            "_keepAliveConnection", "()V", (void*)&Restinio::keepAliveConnection,
+            "_appendHeaderDateField", "()V", (void*)&Restinio::appendHeaderDateField
         };
         JavaClass response = { env, "io/webfolder/dakota/ResponseImpl" };
         env->RegisterNatives(response.get(), responseImpl, sizeof(responseImpl) / sizeof(responseImpl[0]));
@@ -643,6 +646,7 @@ public:
             delete context;
         });
     }
+
     static void appendHeader(JNIEnv* env, jobject that, jstring name, jstring value)
     {
         JavaField field = { env, C_RESPONSE, "context", "J" };
@@ -651,6 +655,30 @@ public:
         String s_name{ env, name };
         String s_value{ env, value };
         context->response()->append_header(s_name.c_str(), s_value.c_str());
+    }
+
+    static void closeConnection(JNIEnv* env, jobject that)
+    {
+        JavaField field = { env, C_RESPONSE, "context", "J" };
+        jlong ptr = env->GetLongField(that, field.get());
+        auto* context = *(Context**)&ptr;
+        context->response()->connection_close();
+    }
+
+    static void keepAliveConnection(JNIEnv* env, jobject that)
+    {
+        JavaField field = { env, C_RESPONSE, "context", "J" };
+        jlong ptr = env->GetLongField(that, field.get());
+        auto* context = *(Context**)&ptr;
+        context->response()->connection_keep_alive();
+    }
+
+    static void appendHeaderDateField(JNIEnv* env, jobject that)
+    {
+        JavaField field = { env, C_RESPONSE, "context", "J" };
+        jlong ptr = env->GetLongField(that, field.get());
+        auto* context = *(Context**)&ptr;
+        context->response()->append_header_date_field();
     }
 };
 

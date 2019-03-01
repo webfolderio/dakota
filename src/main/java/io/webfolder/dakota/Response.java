@@ -6,5 +6,11 @@ public interface Response {
 
     void appendHeader(String name, String value);
 
+    void closeConnection();
+
+    void keepAliveConnection();
+
+    void appendHeaderDateField();
+
     void done();
 }
