@@ -6,6 +6,8 @@ public interface Request {
 
     Response createResponse(HttpStatus status);
 
+    String body();
+
     Response ok();
 
     Map<String, Object> query();

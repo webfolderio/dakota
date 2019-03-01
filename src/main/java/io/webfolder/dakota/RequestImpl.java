@@ -36,6 +36,8 @@ class RequestImpl implements Request {
 
     private native int _indexedParamSize();
 
+    private native String _body();
+
     @Override
     public Response ok() {
         return createResponse(OK);
@@ -82,5 +84,10 @@ class RequestImpl implements Request {
     @Override
     public int indexedParamSize() {
         return _indexedParamSize();
+    }
+
+    @Override
+    public String body() {
+        return _body();
     }
 }

@@ -267,7 +267,7 @@ class Context {
 private:
     restinio::request_handle_t* req_;
     restinio::response_builder_t<restinio::restinio_controlled_output_t>* res_;
-    restinio::router::route_params_t *params_;
+    restinio::router::route_params_t* params_;
     jobject requestObject_;
 
 public:
@@ -328,11 +328,11 @@ public:
     }
     jint namedParamSize() const
     {
-        return (jint) (*params_).named_parameters_size();
+        return (jint)(*params_).named_parameters_size();
     }
     jint indexedParamSize() const
     {
-        return (jint) (*params_).indexed_parameters_size();
+        return (jint)(*params_).indexed_parameters_size();
     }
 };
 
@@ -350,7 +350,7 @@ public:
         }
     }
 
-    JavaField(JNIEnv* env, JavaClass *klass, const char* name, const char* signature)
+    JavaField(JNIEnv* env, JavaClass* klass, const char* name, const char* signature)
     {
         field_ = env->GetFieldID((*klass).get(), name, signature);
     }
@@ -393,7 +393,8 @@ struct Restinio {
             "_param", "(Ljava/lang/String;)Ljava/lang/String;", (void*)&Restinio::getParamByName,
             "_param", "(I)Ljava/lang/String;", (void*)&Restinio::getParamByIndex,
             "_namedParamSize", "()I", (void*)&Restinio::namedParamSize,
-            "_indexedParamSize", "()I", (void*)&Restinio::indexedParamSize
+            "_indexedParamSize", "()I", (void*)&Restinio::indexedParamSize,
+            "_body", "()Ljava/lang/String;", (void*)&Restinio::body
         };
 
         JavaClass request = { env, "io/webfolder/dakota/RequestImpl" };
@@ -438,7 +439,7 @@ public:
                            restinio::router::route_params_t params) {
             auto context = new Context{
                 new restinio::request_handle_t{ req },
-                new restinio::router::route_params_t{std::move(params)}
+                new restinio::router::route_params_t{ std::move(params) }
             };
             auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
             if (envCurrentThread == nullptr) {
@@ -564,7 +565,7 @@ public:
         JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
-        restinio::request_handle_t* request = context->request();
+        auto* request = context->request();
         const auto begin = (*request)->header().begin();
         const auto end = (*request)->header().end();
         jobject map = env->NewObject(C_MAP->get(), M_CONS_MAP->get(), (*request)->header().fields_count());
@@ -584,7 +585,7 @@ public:
         JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
-        restinio::request_handle_t* request = context->request();
+        auto request = context->request();
         auto target = restinio::cast_to<std::string>((*request)->header().request_target());
         return env->NewStringUTF(target.c_str());
     }
@@ -594,7 +595,7 @@ public:
         JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
-        restinio::request_handle_t* request = context->request();
+        auto* request = context->request();
         String param{ env, name };
         jstring value = context->param(env, param.c_str());
         return value;
@@ -609,13 +610,13 @@ public:
         jstring value = context->param(env, index);
         return value;
     }
-    
+
     static jint namedParamSize(JNIEnv* env, jobject that)
     {
         JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
-        restinio::request_handle_t* request = context->request();
+        auto* request = context->request();
         return context->namedParamSize();
     }
 
@@ -624,10 +625,19 @@ public:
         JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
-        restinio::request_handle_t* request = context->request();
+        auto* request = context->request();
         return context->indexedParamSize();
     }
 
+    static jstring body(JNIEnv* env, jobject that)
+    {
+        JavaField field = { env, C_REQUEST, "context", "J" };
+        jlong ptr = env->GetLongField(that, field.get());
+        auto* context = *(Context**)&ptr;
+        auto* request = context->request();
+        return env->NewStringUTF((*request)->body().c_str());
+    }
+    
     static void setBody(JNIEnv* env, jobject that, jstring body)
     {
         JavaField field = { env, C_RESPONSE, "context", "J" };
