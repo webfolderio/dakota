@@ -14,7 +14,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
 
-public class TestAsyncHttpGet {
+public class TestAppendHeader {
 
     private WebServer server;
 
@@ -25,11 +25,10 @@ public class TestAsyncHttpGet {
         Router router = new Router();
 
         router.get("/foo", request -> {
-            new Thread(() -> {
-                Response response = request.ok();
-                response.setBody("hello, world!");
-                response.done();
-            }).start();
+            Response response = request.ok();
+            response.setBody("hello, world!");
+            response.appendHeader("foo", "bar");
+            response.done();
             return accepted;
         });
 
@@ -48,7 +47,9 @@ public class TestAsyncHttpGet {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).build();
         Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo").build();
-        String body = client.newCall(req).execute().body().string();
+        okhttp3.Response resp = client.newCall(req).execute();
+        String body = resp.body().string();
         assertEquals("hello, world!", body);
+        assertEquals("bar", resp.header("foo"));
     }
 }

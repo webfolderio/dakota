@@ -24,8 +24,8 @@ public class TestHttpGet {
 
         Router router = new Router();
 
-        router.get("/foo", context -> {
-            Response response = context.ok();
+        router.get("/foo", request -> {
+            Response response = request.ok();
             response.setBody("hello, world!");
             response.done();
             return accepted;

@@ -267,8 +267,8 @@ class Context {
 private:
     restinio::request_handle_t* req_;
     restinio::response_builder_t<restinio::restinio_controlled_output_t>* res_;
+    restinio::router::route_params_t *params_;
     jobject requestObject_;
-    restinio::router::route_params_t params_;
 
 public:
     Context(const Context&) = delete;
@@ -277,12 +277,13 @@ public:
     {
         delete req_;
         delete res_;
+        delete params_;
         auto env = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
         if (env != nullptr) {
             env->DeleteGlobalRef(requestObject_);
         }
     }
-    Context(restinio::request_handle_t* req, restinio::router::route_params_t params)
+    Context(restinio::request_handle_t* req, restinio::router::route_params_t* params)
         : req_(req)
         , params_(std::move(params))
     {
@@ -309,8 +310,8 @@ public:
     }
     jstring param(JNIEnv* env, const char* name) const
     {
-        if (params_.has(name)) {
-            auto value = restinio::cast_to<std::string>(params_[std::string(name)]);
+        if ((*params_).has(name)) {
+            auto value = restinio::cast_to<std::string>((*params_)[std::string(name)]);
             return env->NewStringUTF(value.c_str());
         } else {
             return nullptr;
@@ -318,8 +319,8 @@ public:
     }
     jstring param(JNIEnv* env, const int index) const
     {
-        if (params_.indexed_parameters_size() > 0 && index < params_.indexed_parameters_size()) {
-            auto value = restinio::cast_to<std::string>(params_[index]);
+        if ((*params_).indexed_parameters_size() > 0 && index < (*params_).indexed_parameters_size()) {
+            auto value = restinio::cast_to<std::string>((*params_)[index]);
             return env->NewStringUTF(value.c_str());
         } else {
             return nullptr;
@@ -327,11 +328,11 @@ public:
     }
     jint namedParamSize() const
     {
-        return (jint) params_.named_parameters_size();
+        return (jint) (*params_).named_parameters_size();
     }
     jint indexedParamSize() const
     {
-        return (jint) params_.indexed_parameters_size();
+        return (jint) (*params_).indexed_parameters_size();
     }
 };
 
@@ -400,7 +401,8 @@ struct Restinio {
 
         JNINativeMethod responseImpl[] = {
             "_done", "()V", (void*)&Restinio::done,
-            "_setBody", "(Ljava/lang/String;)V", (void*)&Restinio::setBody
+            "_setBody", "(Ljava/lang/String;)V", (void*)&Restinio::setBody,
+            "_appendHeader", "(Ljava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader
         };
         JavaClass response = { env, "io/webfolder/dakota/ResponseImpl" };
         env->RegisterNatives(response.get(), responseImpl, sizeof(responseImpl) / sizeof(responseImpl[0]));
@@ -433,7 +435,7 @@ public:
                            restinio::router::route_params_t params) {
             auto context = new Context{
                 new restinio::request_handle_t{ req },
-                std::move(params)
+                new restinio::router::route_params_t{std::move(params)}
             };
             auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
             if (envCurrentThread == nullptr) {
@@ -640,6 +642,15 @@ public:
         context->response()->done([context](const auto& ec) {
             delete context;
         });
+    }
+    static void appendHeader(JNIEnv* env, jobject that, jstring name, jstring value)
+    {
+        JavaField field = { env, C_RESPONSE, "context", "J" };
+        jlong ptr = env->GetLongField(that, field.get());
+        auto* context = *(Context**)&ptr;
+        String s_name{ env, name };
+        String s_value{ env, value };
+        context->response()->append_header(s_name.c_str(), s_value.c_str());
     }
 };
 
