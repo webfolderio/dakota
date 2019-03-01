@@ -661,7 +661,7 @@ public:
     #ifdef _WIN32
         strcpy_s(dest, (size_t)len, (*request)->body().c_str());
     #else
-        strlcpy(dest, (*request)->body().c_str(), (size_t)len);
+        strncpy(dest, (*request)->body().c_str(), (size_t)len);
     #endif
     }
 
