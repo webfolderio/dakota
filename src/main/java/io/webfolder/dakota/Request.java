@@ -12,5 +12,13 @@ public interface Request {
 
     Map<String, Object> header();
 
+    String param(String name);
+
+    String param(int index);
+
+    int namedParamSize();
+
+    int indexedParamSize();
+
     String target();
 }

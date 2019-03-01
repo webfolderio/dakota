@@ -28,6 +28,14 @@ class RequestImpl implements Request {
 
     private native String _target();
 
+    private native String _param(String name);
+
+    private native String _param(int index);
+
+    private native int _namedParamSize();
+
+    private native int _indexedParamSize();
+
     @Override
     public Response ok() {
         return createResponse(OK);
@@ -54,5 +62,25 @@ class RequestImpl implements Request {
     @Override
     public String target() {
         return _target();
+    }
+
+    @Override
+    public String param(String name) {
+        return _param(name);
+    }
+
+    @Override
+    public String param(int index) {
+        return _param(index);
+    }
+
+    @Override
+    public int namedParamSize() {
+        return _namedParamSize();
+    }
+
+    @Override
+    public int indexedParamSize() {
+        return _indexedParamSize();
     }
 }
