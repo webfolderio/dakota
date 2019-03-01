@@ -36,7 +36,7 @@ public class TestHttpParam {
             this.nps = request.namedParamSize();
             this.ips = request.indexedParamSize();
             Response response = request.ok();
-            response.setBody("hello, world!");
+            response.body("hello, world!");
             response.done();
             return accepted;
         });

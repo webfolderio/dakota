@@ -26,7 +26,7 @@ public class TestAppendHeader {
 
         router.get("/foo", request -> {
             Response response = request.ok();
-            response.setBody("hello, world!");
+            response.body("hello, world!");
             response.appendHeader("foo", "bar");
             response.done();
             return accepted;

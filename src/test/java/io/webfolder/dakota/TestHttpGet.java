@@ -26,7 +26,7 @@ public class TestHttpGet {
 
         router.get("/foo", request -> {
             Response response = request.ok();
-            response.setBody("hello, world!");
+            response.body("hello, world!");
             response.done();
             return accepted;
         });

@@ -29,7 +29,7 @@ public class TestHttpPost {
         router.post("/foo", request -> {
             String body = request.body();
             Response response = request.ok();
-            response.setBody(body);
+            response.body(body);
             response.done();
             return accepted;
         });

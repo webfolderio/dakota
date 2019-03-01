@@ -27,7 +27,7 @@ public class TestAppendDateHeader {
 
         router.get("/foo", request -> {
             Response response = request.ok();
-            response.setBody("hello, world!");
+            response.body("hello, world!");
             response.appendHeaderDateField();
             response.done();
             return accepted;

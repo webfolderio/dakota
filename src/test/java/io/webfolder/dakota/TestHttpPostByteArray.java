@@ -10,19 +10,15 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 
-public class TestHttpIndexParam {
+public class TestHttpPostByteArray {
 
     private WebServer server;
-
-    private String bar;
-
-    private int nps;
-
-    private int ips;
 
     @Before
     public void init() {
@@ -30,13 +26,10 @@ public class TestHttpIndexParam {
 
         Router router = new Router();
 
-        router.get("/foo/([a-z_]+)", request -> {
-            String bar = request.param(0);
-            this.bar = bar;
-            this.nps = request.namedParamSize();
-            this.ips = request.indexedParamSize();
+        router.post("/foo", request -> {
+            String body = request.body();
             Response response = request.ok();
-            response.body("hello, world!");
+            response.body(body.getBytes());
             response.done();
             return accepted;
         });
@@ -55,11 +48,11 @@ public class TestHttpIndexParam {
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).build();
-        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo/test_param").build();
+        Request req = new okhttp3.Request.Builder()
+                                .url("http://localhost:8080/foo")
+                                .post(RequestBody.create(MediaType.parse("application/octet-stream"), "hello, world!".getBytes()))
+                            .build();
         String body = client.newCall(req).execute().body().string();
         assertEquals("hello, world!", body);
-        assertEquals("test_param", bar);
-        assertEquals(0, nps);
-        assertEquals(1, ips);
     }
 }

@@ -26,7 +26,7 @@ public class TestHttpClose {
 
         router.get("/foo", request -> {
             Response response = request.ok();
-            response.setBody("hello, world!");
+            response.body("hello, world!");
             response.closeConnection();
             response.done();
             return accepted;

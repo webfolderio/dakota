@@ -394,7 +394,7 @@ struct Restinio {
             "_param", "(I)Ljava/lang/String;", (void*)&Restinio::getParamByIndex,
             "_namedParamSize", "()I", (void*)&Restinio::namedParamSize,
             "_indexedParamSize", "()I", (void*)&Restinio::indexedParamSize,
-            "_body", "()Ljava/lang/String;", (void*)&Restinio::body
+            "_body", "()Ljava/lang/String;", (void*)&Restinio::getBody
         };
 
         JavaClass request = { env, "io/webfolder/dakota/RequestImpl" };
@@ -402,7 +402,8 @@ struct Restinio {
 
         JNINativeMethod responseImpl[] = {
             "_done", "()V", (void*)&Restinio::done,
-            "_setBody", "(Ljava/lang/String;)V", (void*)&Restinio::setBody,
+            "_body", "(Ljava/lang/String;)V", (void*)&Restinio::setBody,
+            "_body", "(Ljava/nio/ByteBuffer;)V", (void*)&Restinio::setBodyByteBuffer,
             "_appendHeader", "(Ljava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader,
             "_closeConnection", "()V", (void*)&Restinio::closeConnection,
             "_keepAliveConnection", "()V", (void*)&Restinio::keepAliveConnection,
@@ -629,7 +630,7 @@ public:
         return context->indexedParamSize();
     }
 
-    static jstring body(JNIEnv* env, jobject that)
+    static jstring getBody(JNIEnv* env, jobject that)
     {
         JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
@@ -645,6 +646,18 @@ public:
         auto* context = *(Context**)&ptr;
         String str{ env, body };
         context->response()->set_body(str.c_str());
+    }
+
+    static void setBodyByteBuffer(JNIEnv* env, jobject that, jobject body)
+    {
+        JavaField field = { env, C_RESPONSE, "context", "J" };
+        jlong ptr = env->GetLongField(that, field.get());
+        auto* context = *(Context**)&ptr;
+        if (body) {
+            std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
+            const char* buffer = (const char*)env->GetDirectBufferAddress(body);
+            context->response()->set_body(restinio::const_buffer(buffer, len));        
+        }
     }
 
     static void done(JNIEnv* env, jobject that)

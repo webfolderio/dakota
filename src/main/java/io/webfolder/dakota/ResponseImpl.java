@@ -1,14 +1,24 @@
 package io.webfolder.dakota;
 
+import static java.nio.ByteBuffer.allocateDirect;
+import static java.nio.ByteOrder.nativeOrder;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 class ResponseImpl implements Response {
 
     private final long context;
+
+    private static final ByteOrder ORDER = nativeOrder();
 
     public ResponseImpl(long context) {
         this.context = context;
     }
 
-    private native void _setBody(String content);
+    private native void _body(String content);
+
+    private native void _body(ByteBuffer content);
 
     private native void _done();
 
@@ -21,8 +31,8 @@ class ResponseImpl implements Response {
     private native void _appendHeaderDateField();
 
     @Override
-    public void setBody(String content) {
-        _setBody(content);
+    public void body(String content) {
+        _body(content);
     }
     
     @Override
@@ -48,5 +58,13 @@ class ResponseImpl implements Response {
     @Override
     public void appendHeaderDateField() {
         _appendHeaderDateField();
+    }
+
+    @Override
+    public void body(byte[] content) {
+        ByteBuffer buffer = allocateDirect(content.length)
+                                .order(ORDER)
+                            .put(content);
+        _body(buffer);
     }
 }

@@ -27,7 +27,7 @@ public class TestAsyncHttpGet {
         router.get("/foo", request -> {
             new Thread(() -> {
                 Response response = request.ok();
-                response.setBody("hello, world!");
+                response.body("hello, world!");
                 response.done();
             }).start();
             return accepted;

@@ -2,7 +2,9 @@ package io.webfolder.dakota;
 
 public interface Response {
 
-    void setBody(String content);
+    void body(String content);
+
+    void body(byte[] content);
 
     void appendHeader(String name, String value);
 
