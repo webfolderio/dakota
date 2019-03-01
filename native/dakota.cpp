@@ -658,7 +658,11 @@ public:
         auto* request = context->request();
         jlong len = env->GetDirectBufferCapacity(buffer) + 1;
         char *dest = (char *) env->GetDirectBufferAddress(buffer);
+    #ifdef _WIN32
         strcpy_s(dest, (size_t)len, (*request)->body().c_str());
+    #else
+        strncpy(dest, (*request)->body().c_str(), (size_t)len);
+    #endif
     }
 
     static void setBody(JNIEnv* env, jobject that, jstring body)
