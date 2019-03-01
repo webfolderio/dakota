@@ -7,6 +7,10 @@ public interface Request {
     Response createResponse(HttpStatus status);
 
     String body();
+    
+    byte[] content();
+
+    long length();
 
     Response ok();
 

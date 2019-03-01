@@ -20,6 +20,10 @@ public class TestHttpPost {
 
     private WebServer server;
 
+    private long length;
+
+    private byte[] content;
+
     @Before
     public void init() {
         server = new WebServer();
@@ -28,7 +32,9 @@ public class TestHttpPost {
 
         router.post("/foo", request -> {
             String body = request.body();
+            length = request.length();
             Response response = request.ok();
+            content = request.content();
             response.body(body);
             response.done();
             return accepted;
@@ -54,5 +60,7 @@ public class TestHttpPost {
                             .build();
         String body = client.newCall(req).execute().body().string();
         assertEquals("hello", body);
+        assertEquals("hello".length(), length);
+        assertEquals("hello", new String(content));
     }
 }

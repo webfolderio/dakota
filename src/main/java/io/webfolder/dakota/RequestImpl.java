@@ -1,11 +1,18 @@
 package io.webfolder.dakota;
 
-import static java.util.Collections.emptyMap;
 import static io.webfolder.dakota.HttpStatus.OK;
+import static java.lang.Integer.MAX_VALUE;
+import static java.nio.ByteBuffer.allocateDirect;
+import static java.nio.ByteOrder.nativeOrder;
+import static java.util.Collections.emptyMap;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Map;
 
 class RequestImpl implements Request {
+
+    private static final ByteOrder ORDER = nativeOrder();
 
     private final long context;
 
@@ -37,6 +44,10 @@ class RequestImpl implements Request {
     private native int _indexedParamSize();
 
     private native String _body();
+
+    private native long _length();
+
+    private native void _content(ByteBuffer buffer);
 
     @Override
     public Response ok() {
@@ -89,5 +100,24 @@ class RequestImpl implements Request {
     @Override
     public String body() {
         return _body();
+    }
+
+    @Override
+    public byte[] content() {
+        long length = length();
+        if (length > MAX_VALUE) {
+            throw new RuntimeException();
+        }
+        ByteBuffer buffer = allocateDirect((int) length)
+                                .order(ORDER);
+        _content(buffer);
+        byte[] content = new byte[buffer.remaining()];
+        buffer.get(content);
+        return content;
+    }
+
+    @Override
+    public long length() {
+        return _length();
     }
 }

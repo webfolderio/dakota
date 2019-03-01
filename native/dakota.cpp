@@ -394,7 +394,9 @@ struct Restinio {
             "_param", "(I)Ljava/lang/String;", (void*)&Restinio::getParamByIndex,
             "_namedParamSize", "()I", (void*)&Restinio::namedParamSize,
             "_indexedParamSize", "()I", (void*)&Restinio::indexedParamSize,
-            "_body", "()Ljava/lang/String;", (void*)&Restinio::getBody
+            "_body", "()Ljava/lang/String;", (void*)&Restinio::getBody,
+            "_length", "()J", (void*)&Restinio::length,
+            "_content", "(Ljava/nio/ByteBuffer;)V", (void*)&Restinio::getContent
         };
 
         JavaClass request = { env, "io/webfolder/dakota/RequestImpl" };
@@ -638,7 +640,27 @@ public:
         auto* request = context->request();
         return env->NewStringUTF((*request)->body().c_str());
     }
-    
+
+    static jlong length(JNIEnv* env, jobject that)
+    {
+        JavaField field = { env, C_REQUEST, "context", "J" };
+        jlong ptr = env->GetLongField(that, field.get());
+        auto* context = *(Context**)&ptr;
+        auto* request = context->request();
+        return (jlong) (*request)->body().length();
+    }
+
+    static void getContent(JNIEnv* env, jobject that, jobject buffer)
+    {
+        JavaField field = { env, C_REQUEST, "context", "J" };
+        jlong ptr = env->GetLongField(that, field.get());
+        auto* context = *(Context**)&ptr;
+        auto* request = context->request();
+        jlong len = env->GetDirectBufferCapacity(buffer) + 1;
+        char *dest = (char *) env->GetDirectBufferAddress(buffer);
+        strcpy_s(dest, (size_t)len, (*request)->body().c_str());
+    }
+
     static void setBody(JNIEnv* env, jobject that, jstring body)
     {
         JavaField field = { env, C_RESPONSE, "context", "J" };
@@ -656,7 +678,7 @@ public:
         if (body) {
             std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
             const char* buffer = (const char*)env->GetDirectBufferAddress(body);
-            context->response()->set_body(restinio::const_buffer(buffer, len));        
+            context->response()->set_body(restinio::const_buffer(buffer, len));
         }
     }
 
