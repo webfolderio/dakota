@@ -349,11 +349,22 @@ public:
         }
     }
 
+    JavaField(JNIEnv* env, JavaClass *klass, const char* name, const char* signature)
+    {
+        field_ = env->GetFieldID((*klass).get(), name, signature);
+    }
+
     jfieldID get() const
     {
         return field_;
     }
 };
+
+static JavaClass* C_REQUEST;
+static JavaClass* C_RESPONSE;
+static JavaClass* C_MAP;
+static JavaMethod* M_CONS_MAP;
+static JavaMethod* M_PUT_MAP;
 
 struct Restinio {
 
@@ -511,7 +522,7 @@ public:
 
     static void createResponse(JNIEnv* env, jobject that, jint status, jstring reasonPhrase)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+        JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
@@ -524,7 +535,7 @@ public:
 
     static jobject query(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+        JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
@@ -532,47 +543,40 @@ public:
         if (qp.empty()) {
             return nullptr;
         }
-        JavaClass linkedHashMap{ env, local, "java/util/LinkedHashMap" };
-        JavaMethod constructor{ env, local, "java/util/LinkedHashMap", "<init>", "(I)V" };
-        JavaMethod put{ env, local, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;" };
-        jobject map = env->NewObject(linkedHashMap.get(), constructor.get(), (jint)qp.size());
+        jobject map = env->NewObject(C_MAP->get(), M_CONS_MAP->get(), (jint)qp.size());
         for (const auto p : qp) {
             std::string first = restinio::cast_to<std::string>(p.first);
             std::string second = restinio::cast_to<std::string>(p.second);
             jstring j_first = env->NewStringUTF(first.c_str());
             jstring j_second = env->NewStringUTF(second.c_str());
-            env->CallObjectMethod(map, put.get(), j_first, j_second);
+            env->CallObjectMethod(map, M_PUT_MAP->get(), j_first, j_second);
         }
         return map;
     }
 
     static jobject header(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+        JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
         const auto begin = (*request)->header().begin();
         const auto end = (*request)->header().end();
-        JavaClass linkedHashMap{ env, local, "java/util/LinkedHashMap" };
-        JavaMethod constructor{ env, local, "java/util/LinkedHashMap", "<init>", "(I)V" };
-        JavaMethod put{ env, local, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;" };
-        jobject map = env->NewObject(linkedHashMap.get(),
-            constructor.get(), (*request)->header().fields_count());
+        jobject map = env->NewObject(C_MAP->get(), M_CONS_MAP->get(), (*request)->header().fields_count());
         std::for_each(
             (*request)->header().begin(),
             (*request)->header().end(),
             [&](const restinio::http_header_field_t& f) {
                 jstring j_name = env->NewStringUTF(f.name().c_str());
                 jstring j_value = env->NewStringUTF(f.value().c_str());
-                env->CallObjectMethod(map, put.get(), j_name, j_value);
+                env->CallObjectMethod(map, M_PUT_MAP->get(), j_name, j_value);
             });
         return map;
     }
 
     static jstring target(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+        JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
@@ -582,7 +586,7 @@ public:
 
     static jstring getParamByName(JNIEnv* env, jobject that, jstring name)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+        JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
@@ -593,7 +597,7 @@ public:
 
     static jstring getParamByIndex(JNIEnv* env, jobject that, jint index)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+        JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
@@ -603,7 +607,7 @@ public:
     
     static jint namedParamSize(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+        JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
@@ -612,7 +616,7 @@ public:
 
     static jint indexedParamSize(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+        JavaField field = { env, C_REQUEST, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
@@ -621,7 +625,7 @@ public:
 
     static void setBody(JNIEnv* env, jobject that, jstring body)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
+        JavaField field = { env, C_RESPONSE, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         String str{ env, body };
@@ -630,7 +634,7 @@ public:
 
     static void done(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
+        JavaField field = { env, C_RESPONSE, "context", "J" };
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         context->response()->done([context](const auto& ec) {
@@ -646,6 +650,25 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
         return JNI_EVERSION;
     }
     jvm = vm;
+    C_REQUEST = new JavaClass{ env, global, "io/webfolder/dakota/RequestImpl" };
+    C_RESPONSE = new JavaClass{ env, global, "io/webfolder/dakota/RequestImpl" };
+    C_MAP = new JavaClass{ env, global, "java/util/LinkedHashMap" };
+    M_CONS_MAP = new JavaMethod{ env, global, "java/util/LinkedHashMap", "<init>", "(I)V" };
+    M_PUT_MAP = new JavaMethod{ env, global, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;" };
     Restinio restinio{ env };
     return JNI_VERSION_1_8;
+}
+
+JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
+{
+    if (C_REQUEST)
+        delete C_REQUEST;
+    if (C_RESPONSE)
+        delete C_RESPONSE;
+    if (C_MAP)
+        delete C_MAP;
+    if (M_CONS_MAP)
+        delete M_CONS_MAP;
+    if (M_PUT_MAP)
+        delete M_PUT_MAP;
 }
