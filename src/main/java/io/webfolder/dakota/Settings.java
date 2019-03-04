@@ -7,7 +7,7 @@ public class Settings {
     private final int port;
 
     public Settings() {
-        this("localhost", 8080);
+        this(8080);
     }
 
     public Settings(int port) {

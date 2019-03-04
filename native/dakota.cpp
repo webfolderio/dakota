@@ -538,8 +538,8 @@ public:
 
         restinio::asio_ns::signal_set break_signals{ ioctx, SIGINT };
         break_signals.async_wait(
-            [that](const restinio::asio_ns::error_code& ec, int) {
-                if (!ec) {
+            [that, pool](const restinio::asio_ns::error_code& ec, int) {
+                if (!ec && pool->started()) {
                     JavaVM* vm = jvm.load();
                     if (vm) {
                         JNIEnv* env = nullptr;
