@@ -10,6 +10,10 @@ public class Settings {
         this("localhost", 8080);
     }
 
+    public Settings(int port) {
+        this("localhost", port);
+    }
+
     public Settings(String address, int port) {
         this.address = address;
         this.port = port;

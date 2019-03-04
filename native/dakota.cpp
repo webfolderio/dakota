@@ -139,9 +139,15 @@ private:
     status_t m_status;
 };
 
-struct dakota_traits : public restinio::default_traits_t {
+#ifdef _DEBUG
+struct dakota_traits : public restinio::traits_t<restinio::asio_timer_manager_t, restinio::single_threaded_ostream_logger_t> {
     using request_handler_t = restinio::router::express_router_t<>;
 };
+#else
+struct dakota_traits : public restinio::traits_t<restinio::asio_timer_manager_t, restinio::null_logger_t> {
+    using request_handler_t = restinio::router::express_router_t<>;
+};
+#endif
 
 enum ReflectionCacheType {
     global,

@@ -53,7 +53,7 @@ public class WebServer {
     }
 
     public void run(Router router) {
-        _run(new Settings(), router.getRoutes(), null);
+        _run(settings, router.getRoutes(), null);
     }
 
     public void run(Router router, Handler nonMatchedHandler) {
