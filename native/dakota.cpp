@@ -532,9 +532,18 @@ public:
 
         restinio::asio_ns::signal_set break_signals{ ioctx, SIGINT };
         break_signals.async_wait(
-            [pool](const restinio::asio_ns::error_code& ec, int) {
+            [that](const restinio::asio_ns::error_code& ec, int) {
                 if (!ec) {
-                    pool->stop();
+                    JavaVM* vm = jvm.load();
+                    if (vm) {
+                        JNIEnv* env = nullptr;
+                        jint ret = vm->AttachCurrentThreadAsDaemon((void**)&env, nullptr);
+                        if (ret == JNI_OK && env) {
+                            JavaMethod mStop{ env, "io/webfolder/dakota/WebServer", "stop", "()V" };
+                            env->CallObjectMethod(that, mStop.get());
+                            vm->DetachCurrentThread();
+                        }
+                    }
                 }
             });
 
