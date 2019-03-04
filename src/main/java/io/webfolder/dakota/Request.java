@@ -14,9 +14,9 @@ public interface Request {
 
     Response ok();
 
-    Map<String, Object> query();
+    Map<String, String> query();
 
-    Map<String, Object> header();
+    Map<String, String> header();
 
     String param(String name);
 

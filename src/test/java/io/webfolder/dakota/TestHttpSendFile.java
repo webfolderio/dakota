@@ -3,10 +3,11 @@ package io.webfolder.dakota;
 import static io.webfolder.dakota.HandlerStatus.accepted;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.junit.After;
 import org.junit.Before;
@@ -16,11 +17,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
 import okhttp3.Request;
 
-public class TestQueryParam {
+public class TestHttpSendFile {
 
     private WebServer server;
-
-    private Map<String, String> queryMap;
 
     @Before
     public void init() {
@@ -30,7 +29,14 @@ public class TestQueryParam {
 
         router.get("/foo", request -> {
             Response response = request.ok();
-            queryMap = request.query();
+            Path file = null;   
+            try {
+                file = Files.createTempFile("dakota", ".txt");
+                Files.write(file, "Привет, мир!".getBytes(StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            response.body(file.toFile());
             response.done();
             return accepted;
         });
@@ -47,13 +53,10 @@ public class TestQueryParam {
 
     @Test
     public void test() throws IOException {
-        OkHttpClient client = new Builder().writeTimeout(240, SECONDS).readTimeout(240, SECONDS)
-                .connectTimeout(240, SECONDS).build();
-        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo?foo=bar&abc=123").build();
-        client.newCall(req).execute();
-        assertNotNull(queryMap);
-        assertEquals(2, queryMap.size());
-        assertEquals("bar", queryMap.get("foo"));
-        assertEquals("123", queryMap.get("abc"));
+        OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
+                .connectTimeout(10, SECONDS).build();
+        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo").build();
+        String body = new String(client.newCall(req).execute().body().bytes(), StandardCharsets.UTF_8);
+        assertEquals("Привет, мир!", body);
     }
 }

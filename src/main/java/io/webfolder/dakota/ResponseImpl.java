@@ -3,6 +3,7 @@ package io.webfolder.dakota;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -19,6 +20,8 @@ class ResponseImpl implements Response {
     private native void _body(String content);
 
     private native void _body(ByteBuffer content);
+
+    private native void _body(File file);
 
     private native void _done();
 
@@ -42,6 +45,7 @@ class ResponseImpl implements Response {
 
     @Override
     public void appendHeader(String name, String value) {
+        assert name != null;
         _appendHeader(name, value);
     }
 
@@ -62,9 +66,16 @@ class ResponseImpl implements Response {
 
     @Override
     public void body(byte[] content) {
+        assert content != null;
         ByteBuffer buffer = allocateDirect(content.length)
                                 .order(ORDER)
                             .put(content);
         _body(buffer);
+    }
+
+    @Override
+    public void body(File file) {
+        assert file != null;
+        _body(file);
     }
 }

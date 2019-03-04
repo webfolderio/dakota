@@ -374,12 +374,8 @@ struct Restinio {
     Restinio(JNIEnv* env)
     {
         JNINativeMethod serverMethods[] = {
-            "_run",
-            "([[Ljava/lang/Object;Lio/webfolder/dakota/Handler;)V",
-            (void*)&Restinio::run,
-            "_stop",
-            "()V",
-            (void*)&Restinio::stop,
+            "_run", "(Lio/webfolder/dakota/Settings;[[Ljava/lang/Object;Lio/webfolder/dakota/Handler;)V", (void*)&Restinio::run,
+            "_stop", "()V", (void*)&Restinio::stop
         };
 
         JavaClass server{ env, "io/webfolder/dakota/WebServer" };
@@ -406,6 +402,7 @@ struct Restinio {
             "_done", "()V", (void*)&Restinio::done,
             "_body", "(Ljava/lang/String;)V", (void*)&Restinio::setBody,
             "_body", "(Ljava/nio/ByteBuffer;)V", (void*)&Restinio::setBodyByteBuffer,
+            "_body", "(Ljava/io/File;)V", (void*)&Restinio::setBodyFile,
             "_appendHeader", "(Ljava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader,
             "_closeConnection", "()V", (void*)&Restinio::closeConnection,
             "_keepAliveConnection", "()V", (void*)&Restinio::keepAliveConnection,
@@ -431,12 +428,19 @@ public:
         return httpMethod;
     }
 
-    static void run(JNIEnv* env, jobject that, jobjectArray routes, jobject nonMatchedHandler)
+    static void run(JNIEnv* env, jobject that, jobject serverSettings, jobjectArray routes, jobject nonMatchedHandler)
     {
+        JavaMethod mGetPort{ env, "io/webfolder/dakota/Settings", "getPort", "()I" };
+        JavaMethod mAddress{ env, "io/webfolder/dakota/Settings", "getAddress", "()Ljava/lang/String;" };
+        jint port = (jint)env->CallIntMethod(serverSettings, mGetPort.get());
+        jstring address = (jstring)env->CallObjectMethod(serverSettings, mAddress.get());
+        String s_address{ env, address };
+
         auto klassRequest = new JavaClass{ env, global, "io/webfolder/dakota/RequestImpl" };
         auto constructorRequest = new JavaMethod{ env, global, "io/webfolder/dakota/RequestImpl", "<init>", "(J)V" };
         auto handleMethod = new JavaMethod{ env, global, "io/webfolder/dakota/Handler", "handle", "(Lio/webfolder/dakota/Request;)Lio/webfolder/dakota/HandlerStatus;" };
         auto statusField = new JavaField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
+
         auto execute = [&](jobject handler,
                            restinio::request_handle_t req,
                            restinio::router::route_params_t params) {
@@ -497,21 +501,28 @@ public:
         auto pool = new thread_pool_t{ pool_size, ioctx };
 
         auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
-                            .port(8080)
-                            .address("localhost")
+                            .port((uint16_t)port)
+                            .address(s_address.c_str())
                             .cleanup_func([pool, klassRequest, constructorRequest, handleMethod, statusField]() {
                                 delete pool, klassRequest, constructorRequest,
                                     handleMethod, statusField;
-                            })
-                            .request_handler(std::move(router));
+                            }).request_handler(std::move(router));
 
         server_t server{
             restinio::external_io_context(ioctx),
             std::forward<settings_t>(settings)
         };
 
-        server.open_sync();
-        pool->start();
+        try {
+            server.open_sync();
+            pool->start();
+        } catch (const std::exception& ex) {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
+            delete pool, klassRequest, constructorRequest,
+                handleMethod, statusField;
+            env->ThrowNew(exceptionClass.get(), ex.what());
+            return;
+        }
 
         if (pool->started()) {
             JavaField field = { env, "io/webfolder/dakota/WebServer", "pool", "J" };
@@ -525,8 +536,10 @@ public:
     {
         JavaField field = { env, "io/webfolder/dakota/WebServer", "pool", "J" };
         jlong ptr = env->GetLongField(that, field.get());
-        auto* pool = *(thread_pool_t**)ptr;
-        pool->stop();
+        if (ptr > 0) {
+            auto* pool = *(thread_pool_t**)ptr;
+            pool->stop();
+        }
     }
 
     static void createResponse(JNIEnv* env, jobject that, jint status, jstring reasonPhrase)
@@ -647,7 +660,7 @@ public:
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         auto* request = context->request();
-        return (jlong) (*request)->body().length();
+        return (jlong)(*request)->body().length();
     }
 
     static void getContent(JNIEnv* env, jobject that, jobject buffer)
@@ -657,12 +670,12 @@ public:
         auto* context = *(Context**)&ptr;
         auto* request = context->request();
         jlong len = env->GetDirectBufferCapacity(buffer) + 1;
-        char *dest = (char *) env->GetDirectBufferAddress(buffer);
-    #ifdef _WIN32
+        char* dest = (char*)env->GetDirectBufferAddress(buffer);
+#ifdef _WIN32
         strcpy_s(dest, (size_t)len, (*request)->body().c_str());
-    #else
+#else
         strncpy(dest, (*request)->body().c_str(), (size_t)len);
-    #endif
+#endif
     }
 
     static void setBody(JNIEnv* env, jobject that, jstring body)
@@ -684,6 +697,18 @@ public:
             const char* buffer = (const char*)env->GetDirectBufferAddress(body);
             context->response()->set_body(restinio::const_buffer(buffer, len));
         }
+    }
+
+    static void setBodyFile(JNIEnv* env, jobject that, jobject file)
+    {
+        JavaField field = { env, C_RESPONSE, "context", "J" };
+        jlong ptr = env->GetLongField(that, field.get());
+        auto* context = *(Context**)&ptr;
+        JavaClass klass{ env, local, "java/io/File" };
+        JavaMethod method{ env, local, "java/io/File", "getAbsolutePath", "()Ljava/lang/String;" };
+        jstring path = (jstring)env->CallObjectMethod(file, method.get());
+        String c_path{ env, path };
+        context->response()->set_body(restinio::sendfile(c_path.c_str()));
     }
 
     static void done(JNIEnv* env, jobject that)

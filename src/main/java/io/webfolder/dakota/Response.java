@@ -1,10 +1,14 @@
 package io.webfolder.dakota;
 
+import java.io.File;
+
 public interface Response {
 
     void body(String content);
 
     void body(byte[] content);
+
+    void body(File file);
 
     void appendHeader(String name, String value);
 

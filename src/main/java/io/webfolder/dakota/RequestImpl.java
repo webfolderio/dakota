@@ -29,9 +29,9 @@ class RequestImpl implements Request {
 
     private native void _createResponse(int status, String reasonPhrase);
 
-    private native Map<String, Object> _query();
+    private native Map<String, String> _query();
 
-    private native Map<String, Object> _header();
+    private native Map<String, String> _header();
 
     private native String _target();
 
@@ -55,8 +55,8 @@ class RequestImpl implements Request {
     }
 
     @Override
-    public Map<String, Object> query() {
-        Map<String, Object> map = _query();
+    public Map<String, String> query() {
+        Map<String, String> map = _query();
         if (map == null) {
             return emptyMap();
         }
@@ -64,8 +64,8 @@ class RequestImpl implements Request {
     }
 
     @Override
-    public Map<String, Object> header() {
-        Map<String, Object> map = _header();
+    public Map<String, String> header() {
+        Map<String, String> map = _header();
         if (map == null) {
             return emptyMap();
         }

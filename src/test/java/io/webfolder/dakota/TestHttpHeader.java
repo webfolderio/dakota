@@ -20,7 +20,7 @@ public class TestHttpHeader {
 
     private WebServer server;
 
-    private Map<String, Object> headerMap;
+    private Map<String, String> headerMap;
 
     @Before
     public void init() {
