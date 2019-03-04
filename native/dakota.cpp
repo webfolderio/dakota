@@ -506,7 +506,8 @@ public:
                             .cleanup_func([pool, klassRequest, constructorRequest, handleMethod, statusField]() {
                                 delete pool, klassRequest, constructorRequest,
                                     handleMethod, statusField;
-                            }).request_handler(std::move(router));
+                            })
+                            .request_handler(std::move(router));
 
         server_t server{
             restinio::external_io_context(ioctx),
@@ -528,6 +529,14 @@ public:
             JavaField field = { env, "io/webfolder/dakota/WebServer", "pool", "J" };
             env->SetLongField(that, field.get(), (jlong)pool);
         }
+
+        restinio::asio_ns::signal_set break_signals{ ioctx, SIGINT };
+        break_signals.async_wait(
+            [pool](const restinio::asio_ns::error_code& ec, int) {
+                if (!ec) {
+                    pool->stop();
+                }
+            });
 
         pool->wait();
     }

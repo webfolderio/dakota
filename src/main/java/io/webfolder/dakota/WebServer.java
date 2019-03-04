@@ -35,6 +35,8 @@ public class WebServer {
 
     private long pool;
 
+    private final Settings settings;
+
     // ------------------------------------------------------------------------
     // private native methods
     // ------------------------------------------------------------------------
@@ -42,23 +44,27 @@ public class WebServer {
 
     private native void _stop();
 
+    public WebServer(Settings settings) {
+        this.settings = settings;
+    }
+
+    public WebServer() {
+        this(new Settings());
+    }
+
     public void run(Router router) {
         _run(new Settings(), router.getRoutes(), null);
     }
 
-    public void run(Settings settings, Router router) {
-        _run(settings, router.getRoutes(), null);
-    }
-
     public void run(Router router, Handler nonMatchedHandler) {
-        _run(new Settings(), router.getRoutes(), nonMatchedHandler);
-    }
-
-    public void run(Settings settings, Router router, Handler nonMatchedHandler) {
         _run(settings, router.getRoutes(), nonMatchedHandler);
     }
 
     public void stop() {
         _stop();
+    }
+
+    public Settings getSettings() {
+        return settings;
     }
 }
