@@ -367,6 +367,9 @@ public:
     }
 };
 
+static JavaField* F_REQUEST;
+static JavaField* F_RESPONSE;
+
 struct Restinio {
 
     using thread_pool_t = ioctx_on_thread_pool_t<external_io_context_for_thread_pool_t>;
@@ -430,6 +433,9 @@ public:
 
     static void run(JNIEnv* env, jobject that, jobject serverSettings, jobjectArray routes, jobject nonMatchedHandler)
     {
+        F_REQUEST = new JavaField{ env, "io/webfolder/dakota/RequestImpl", "context", "J" };
+        F_RESPONSE = new JavaField{ env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
+
         JavaMethod mGetPort{ env, "io/webfolder/dakota/Settings", "getPort", "()I" };
         JavaMethod mAddress{ env, "io/webfolder/dakota/Settings", "getAddress", "()Ljava/lang/String;" };
         jint port = (jint)env->CallIntMethod(serverSettings, mGetPort.get());
@@ -514,8 +520,11 @@ public:
             std::forward<settings_t>(settings)
         };
 
-        try {
+        asio::post(ioctx, [&] {
             server.open_sync();
+        });
+
+        try {
             pool->start();
         } catch (const std::exception& ex) {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
@@ -528,23 +537,6 @@ public:
             JavaField field = { env, "io/webfolder/dakota/WebServer", "pool", "J" };
             env->SetLongField(that, field.get(), (jlong)pool);
         }
-
-        restinio::asio_ns::signal_set break_signals{ ioctx, SIGINT };
-        break_signals.async_wait(
-            [that, pool](const restinio::asio_ns::error_code& ec, int) {
-                if (!ec && pool->started()) {
-                    JavaVM* vm = jvm.load();
-                    if (vm) {
-                        JNIEnv* env = nullptr;
-                        jint ret = vm->AttachCurrentThreadAsDaemon((void**)&env, nullptr);
-                        if (ret == JNI_OK && env) {
-                            JavaMethod mStop{ env, "io/webfolder/dakota/WebServer", "stop", "()V" };
-                            env->CallObjectMethod(that, mStop.get());
-                            vm->DetachCurrentThread();
-                        }
-                    }
-                }
-            });
 
         pool->wait();
     }
@@ -561,8 +553,7 @@ public:
 
     static void createResponse(JNIEnv* env, jobject that, jint status, jstring reasonPhrase)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
         String str{ env, reasonPhrase };
@@ -574,8 +565,7 @@ public:
 
     static jobject query(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
         const auto qp = restinio::parse_query((*request)->header().query());
@@ -621,8 +611,7 @@ public:
 
     static jstring target(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         auto request = context->request();
         auto target = restinio::cast_to<std::string>((*request)->header().request_target());
@@ -631,8 +620,7 @@ public:
 
     static jstring getParamByName(JNIEnv* env, jobject that, jstring name)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         auto* request = context->request();
         String param{ env, name };
@@ -642,8 +630,7 @@ public:
 
     static jstring getParamByIndex(JNIEnv* env, jobject that, jint index)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         restinio::request_handle_t* request = context->request();
         jstring value = context->param(env, index);
@@ -652,8 +639,7 @@ public:
 
     static jint namedParamSize(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         auto* request = context->request();
         return context->namedParamSize();
@@ -661,8 +647,7 @@ public:
 
     static jint indexedParamSize(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         auto* request = context->request();
         return context->indexedParamSize();
@@ -670,8 +655,7 @@ public:
 
     static jstring getBody(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         auto* request = context->request();
         return env->NewStringUTF((*request)->body().c_str());
@@ -679,8 +663,7 @@ public:
 
     static jlong length(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         auto* request = context->request();
         return (jlong)(*request)->body().length();
@@ -688,8 +671,7 @@ public:
 
     static void getContent(JNIEnv* env, jobject that, jobject buffer)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
         auto* request = context->request();
         jlong len = env->GetDirectBufferCapacity(buffer) + 1;
@@ -703,8 +685,7 @@ public:
 
     static void setBody(JNIEnv* env, jobject that, jstring body)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
         auto* context = *(Context**)&ptr;
         String str{ env, body };
         context->response()->set_body(str.c_str());
@@ -712,8 +693,7 @@ public:
 
     static void setBodyByteBuffer(JNIEnv* env, jobject that, jobject body)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
         auto* context = *(Context**)&ptr;
         if (body) {
             std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
@@ -724,8 +704,7 @@ public:
 
     static void setBodyFile(JNIEnv* env, jobject that, jobject file)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
         auto* context = *(Context**)&ptr;
         JavaClass klass{ env, local, "java/io/File" };
         JavaMethod method{ env, local, "java/io/File", "getAbsolutePath", "()Ljava/lang/String;" };
@@ -736,8 +715,7 @@ public:
 
     static void done(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
         auto* context = *(Context**)&ptr;
         context->response()->done([context](const auto& ec) {
             delete context;
@@ -746,8 +724,7 @@ public:
 
     static void appendHeader(JNIEnv* env, jobject that, jstring name, jstring value)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
         auto* context = *(Context**)&ptr;
         String s_name{ env, name };
         String s_value{ env, value };
@@ -756,24 +733,21 @@ public:
 
     static void closeConnection(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
         auto* context = *(Context**)&ptr;
         context->response()->connection_close();
     }
 
     static void keepAliveConnection(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
         auto* context = *(Context**)&ptr;
         context->response()->connection_keep_alive();
     }
 
     static void appendHeaderDateField(JNIEnv* env, jobject that)
     {
-        JavaField field = { env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
+        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
         auto* context = *(Context**)&ptr;
         context->response()->append_header_date_field();
     }
