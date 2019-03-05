@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -41,6 +42,13 @@ public class TestHttpSendFile {
         });
 
         new Thread(() -> server.run(router)).start();
+    }
+
+    @After
+    public void destroy() {
+        if (server != null) {
+            server.stop();
+        }
     }
 
     @Test

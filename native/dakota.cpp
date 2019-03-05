@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include <windows.h>
 
 #define IDX_METHOD 0
 #define IDX_PATH 1
@@ -378,7 +377,8 @@ struct Restinio {
     Restinio(JNIEnv* env)
     {
         JNINativeMethod serverMethods[] = {
-            "_run", "(Lio/webfolder/dakota/Settings;[[Ljava/lang/Object;Lio/webfolder/dakota/Handler;)V", (void*)&Restinio::run
+            "_run", "(Lio/webfolder/dakota/Settings;[[Ljava/lang/Object;Lio/webfolder/dakota/Handler;)V", (void*)&Restinio::run,
+            "_stop", "()V", (void*)&Restinio::stop
         };
 
         JavaClass server{ env, "io/webfolder/dakota/WebServer" };
@@ -504,49 +504,52 @@ public:
         using settings_t = restinio::run_on_thread_pool_settings_t<dakota_traits>;
         using server_t = restinio::http_server_t<dakota_traits>;
 
-        restinio::asio_ns::io_context ioctx;
-        thread_pool_t pool{ pool_size, ioctx };
+        restinio::asio_ns::io_context* ioctx = new restinio::asio_ns::io_context();
+        thread_pool_t* pool = new thread_pool_t{ pool_size, std::move(*ioctx) };
+        
+        server_t* server = nullptr;
 
         auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
                             .port((uint16_t)port)
                             .address(s_address.c_str())
-                            .request_handler(std::move(router));
+                            .request_handler(std::move(router))
+                            .cleanup_func([server, pool, ioctx]() {
+                                delete server, ioctx, pool;
+                            });
 
-        server_t server{
-            restinio::external_io_context(ioctx),
+        server = new server_t{
+            restinio::external_io_context(*ioctx),
             std::forward<settings_t>(settings)
         };
 
-        asio::post(ioctx, [&] {
-            server.open_sync();
+        asio::post(*ioctx, [&] {
+            server->open_sync();
         });
 
         try {
-            pool.start();
+            pool->start();
         } catch (const std::exception& ex) {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
             env->ThrowNew(exceptionClass.get(), ex.what());
             return;
         }
 
-        asio::signal_set break_signals{ ioctx, SIGINT };
-        break_signals.async_wait(
-            [&](const asio::error_code& ec, int) {
-            if (!ec) {
-                server.close_async(
-                    [&] {
-                        ioctx.stop();
-                        pool.stop();
-                    },
-                    [](std::exception_ptr ex) {
-                        std::rethrow_exception(ex);
-                    });
-            }
-        });
+        JavaField fServer = { env, "io/webfolder/dakota/WebServer", "server", "J" };
+        env->SetLongField(that, fServer.get(), (jlong) server);
 
-        pool.wait();
-        printf("foo");
-        fflush(stdout);
+        pool->wait();
+    }
+
+    static void stop(JNIEnv* env, jobject that)
+    {
+        JavaField fServer = { env, "io/webfolder/dakota/WebServer", "server", "J" };
+        jlong ptrServer = env->GetLongField(that, fServer.get());
+        using server_t = restinio::http_server_t<dakota_traits>;
+        if (ptrServer > 0) {
+            auto* server = (server_t*)ptrServer;
+            server->close_sync();
+            server->io_context().stop();
+        }
     }
 
     static void createResponse(JNIEnv* env, jobject that, jint status, jstring reasonPhrase)

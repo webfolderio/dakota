@@ -33,7 +33,7 @@ public class WebServer {
     // native peer
     // ------------------------------------------------------------------------
 
-    private long pool;
+    private long server;
 
     private final Settings settings;
 
@@ -41,6 +41,8 @@ public class WebServer {
     // private native methods
     // ------------------------------------------------------------------------
     private native void _run(Settings settings, Object[][] routes, Handler nonMatchedHandler);
+
+    private native void _stop();
 
     public WebServer(Settings settings) {
         this.settings = settings;
@@ -60,5 +62,9 @@ public class WebServer {
 
     public Settings getSettings() {
         return settings;
+    }
+
+    public void stop() {
+        _stop();
     }
 }
