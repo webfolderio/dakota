@@ -6,7 +6,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -47,16 +46,6 @@ public class TestMultipleServer {
         });
 
         new Thread(() -> server2.run(router2)).start();
-    }
-
-    @After
-    public void destroy() {
-        if (server1 != null) {
-            server1.stop();
-        }
-        if (server2 != null) {
-            server1.stop();
-        }
     }
 
     @Test

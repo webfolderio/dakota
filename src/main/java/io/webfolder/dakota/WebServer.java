@@ -42,8 +42,6 @@ public class WebServer {
     // ------------------------------------------------------------------------
     private native void _run(Settings settings, Object[][] routes, Handler nonMatchedHandler);
 
-    private native void _stop();
-
     public WebServer(Settings settings) {
         this.settings = settings;
     }
@@ -58,10 +56,6 @@ public class WebServer {
 
     public void run(Router router, Handler nonMatchedHandler) {
         _run(settings, router.getRoutes(), nonMatchedHandler);
-    }
-
-    public void stop() {
-        _stop();
     }
 
     public Settings getSettings() {

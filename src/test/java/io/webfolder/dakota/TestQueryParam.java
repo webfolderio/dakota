@@ -8,7 +8,6 @@ import static org.junit.Assert.assertNotNull;
 import java.io.IOException;
 import java.util.Map;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -36,13 +35,6 @@ public class TestQueryParam {
         });
 
         new Thread(() -> server.run(router)).start();
-    }
-
-    @After
-    public void destroy() {
-        if (server != null) {
-            server.stop();
-        }
     }
 
     @Test

@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <windows.h>
 
 #define IDX_METHOD 0
 #define IDX_PATH 1
@@ -377,8 +378,7 @@ struct Restinio {
     Restinio(JNIEnv* env)
     {
         JNINativeMethod serverMethods[] = {
-            "_run", "(Lio/webfolder/dakota/Settings;[[Ljava/lang/Object;Lio/webfolder/dakota/Handler;)V", (void*)&Restinio::run,
-            "_stop", "()V", (void*)&Restinio::stop
+            "_run", "(Lio/webfolder/dakota/Settings;[[Ljava/lang/Object;Lio/webfolder/dakota/Handler;)V", (void*)&Restinio::run
         };
 
         JavaClass server{ env, "io/webfolder/dakota/WebServer" };
@@ -505,14 +505,11 @@ public:
         using server_t = restinio::http_server_t<dakota_traits>;
 
         restinio::asio_ns::io_context ioctx;
-        auto pool = new thread_pool_t{ pool_size, ioctx };
+        thread_pool_t pool{ pool_size, ioctx };
 
         auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
                             .port((uint16_t)port)
                             .address(s_address.c_str())
-                            .cleanup_func([pool]() {
-                                delete pool;
-                            })
                             .request_handler(std::move(router));
 
         server_t server{
@@ -525,30 +522,31 @@ public:
         });
 
         try {
-            pool->start();
+            pool.start();
         } catch (const std::exception& ex) {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
-            delete pool;
             env->ThrowNew(exceptionClass.get(), ex.what());
             return;
         }
 
-        if (pool->started()) {
-            JavaField field = { env, "io/webfolder/dakota/WebServer", "pool", "J" };
-            env->SetLongField(that, field.get(), (jlong)pool);
-        }
+        asio::signal_set break_signals{ ioctx, SIGINT };
+        break_signals.async_wait(
+            [&](const asio::error_code& ec, int) {
+            if (!ec) {
+                server.close_async(
+                    [&] {
+                        ioctx.stop();
+                        pool.stop();
+                    },
+                    [](std::exception_ptr ex) {
+                        std::rethrow_exception(ex);
+                    });
+            }
+        });
 
-        pool->wait();
-    }
-
-    static void stop(JNIEnv* env, jobject that)
-    {
-        JavaField field = { env, "io/webfolder/dakota/WebServer", "pool", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
-        if (ptr > 0) {
-            auto* pool = *(thread_pool_t**)ptr;
-            pool->stop();
-        }
+        pool.wait();
+        printf("foo");
+        fflush(stdout);
     }
 
     static void createResponse(JNIEnv* env, jobject that, jint status, jstring reasonPhrase)
