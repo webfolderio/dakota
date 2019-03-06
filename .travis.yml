@@ -28,9 +28,9 @@ script:
   - cd native
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/travis/build/webfolderio/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
-  - cmake .. -DCMAKE_BUILD_TYPE=Release
-  - make
+  - CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/travis/build/webfolderio/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
+  - CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_BUILD_TYPE=Release
+  - CC=gcc-8 CXX=g++-8 make
   - strip libdakota.so
   - cp libdakota.so ../../src/main/resources/META-INF
   - cd ..
