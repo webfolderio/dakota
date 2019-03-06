@@ -19,7 +19,7 @@ cache:
 install:
   - git clone https://github.com/Microsoft/vcpkg.git
   - cd vcpkg
-  - ./bootstrap-vcpkg.sh
+  - CC=gcc-8 CXX=g++-8 ./bootstrap-vcpkg.sh
   - ./vcpkg integrate install
   - ./vcpkg install restinio:x64-linux
   - cd ..
