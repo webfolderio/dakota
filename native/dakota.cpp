@@ -1,5 +1,7 @@
 #include "stdafx.h"
 
+#pragma GCC diagnostic ignored "-Wwrite-strings"
+
 #define IDX_METHOD 0
 #define IDX_PATH 1
 #define IDX_HNDLR 2
@@ -323,7 +325,7 @@ public:
             return nullptr;
         }
     }
-    jstring param(JNIEnv* env, const int index) const
+    jstring param(JNIEnv* env, long unsigned int index) const
     {
         if ((*params_).indexed_parameters_size() > 0 && index < (*params_).indexed_parameters_size()) {
             auto value = restinio::cast_to<std::string>((*params_)[index]);
@@ -590,8 +592,6 @@ public:
         jlong ptr = env->GetLongField(that, field.get());
         auto* context = *(Context**)&ptr;
         auto* request = context->request();
-        const auto begin = (*request)->header().begin();
-        const auto end = (*request)->header().end();
         JavaClass kMap{ env, "java/util/LinkedHashMap" };
         JavaMethod cMap{ env, "java/util/LinkedHashMap", "<init>", "(I)V" };
         JavaMethod mPut{ env, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;" };
@@ -620,7 +620,6 @@ public:
     {
         jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
-        auto* request = context->request();
         String param{ env, name };
         jstring value = context->param(env, param.c_str());
         return value;
@@ -630,7 +629,6 @@ public:
     {
         jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
-        restinio::request_handle_t* request = context->request();
         jstring value = context->param(env, index);
         return value;
     }
@@ -639,7 +637,6 @@ public:
     {
         jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
-        auto* request = context->request();
         return context->namedParamSize();
     }
 
@@ -647,7 +644,6 @@ public:
     {
         jlong ptr = env->GetLongField(that, F_REQUEST->get());
         auto* context = *(Context**)&ptr;
-        auto* request = context->request();
         return context->indexedParamSize();
     }
 
