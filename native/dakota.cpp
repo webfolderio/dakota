@@ -545,8 +545,8 @@ public:
         using server_t = restinio::http_server_t<dakota_traits>;
         if (ptrServer > 0) {
             auto* server = (server_t*)ptrServer;
-            server->io_context().stop();
             server->close_sync();
+            server->io_context().stop();
             delete server;
         }
     }
