@@ -21,7 +21,6 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>2.22.1</version>
 				<configuration>
-					<reuseFork>true</reuseFork>
 					<reuseForks>false</reuseForks>
 				</configuration>
 			</plugin>
