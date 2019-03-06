@@ -1,19 +1,25 @@
+language: cpp
+
 matrix:
   include:
-     language: java
-     env: CC=gcc-8 CXX=g++-8
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+      env:
+        - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
 
 cache:
   directories:
   - $HOME/.m2
 
 install:
-  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-  - sudo apt-get update -y
-  - sudo apt-get install g++-8 -y
   - git clone https://github.com/Microsoft/vcpkg.git
   - cd vcpkg
-  - ./bootstrap-vcpkg.sh
+  - CC=gcc-8 CXX=g++-8 ./bootstrap-vcpkg.sh
   - ./vcpkg integrate install
   - ./vcpkg install restinio:x64-linux
   - cd ..
@@ -22,9 +28,9 @@ script:
   - cd native
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/travis/build/webfolderio/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
-  - cmake .. -DCMAKE_BUILD_TYPE=Release
-  - make
+  - CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/travis/build/webfolderio/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
+  - CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_BUILD_TYPE=Release
+  - CC=gcc-8 CXX=g++-8 make
   - strip libdakota.so
   - cp libdakota.so ../../src/main/resources/META-INF
   - cd ..
