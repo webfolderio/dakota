@@ -8,8 +8,6 @@ public interface Response {
 
     void body(byte[] content);
 
-    void body(File file);
-
     void appendHeader(String name, String value);
 
     void closeConnection();

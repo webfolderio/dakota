@@ -405,7 +405,6 @@ struct Restinio {
             "_done", "()V", (void*)&Restinio::done,
             "_body", "(Ljava/lang/String;)V", (void*)&Restinio::setBody,
             "_body", "(Ljava/nio/ByteBuffer;)V", (void*)&Restinio::setBodyByteBuffer,
-            "_body", "(Ljava/io/File;)V", (void*)&Restinio::setBodyFile,
             "_appendHeader", "(Ljava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader,
             "_closeConnection", "()V", (void*)&Restinio::closeConnection,
             "_keepAliveConnection", "()V", (void*)&Restinio::keepAliveConnection,
@@ -441,6 +440,11 @@ public:
         jint port = (jint)env->CallIntMethod(serverSettings, mGetPort.get());
         jstring address = (jstring)env->CallObjectMethod(serverSettings, mAddress.get());
         String s_address{ env, address };
+        
+        JavaMethod constructorRequest{ env, "io/webfolder/dakota/RequestImpl", "<init>", "(J)V" };
+        JavaClass klassRequest{ env, "io/webfolder/dakota/RequestImpl" };
+        JavaMethod handleMethod{ env, "io/webfolder/dakota/Handler", "handle", "(Lio/webfolder/dakota/Request;)Lio/webfolder/dakota/HandlerStatus;" };
+        JavaField statusField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
 
         auto execute = [&](jobject handler,
                            restinio::request_handle_t req,
@@ -454,11 +458,6 @@ public:
                 delete context;
                 return restinio::request_rejected();
             }
-
-            JavaClass klassRequest{ envCurrentThread, "io/webfolder/dakota/RequestImpl" };
-            JavaMethod constructorRequest{ envCurrentThread, "io/webfolder/dakota/RequestImpl", "<init>", "(J)V" };
-            JavaMethod handleMethod{ envCurrentThread, "io/webfolder/dakota/Handler", "handle", "(Lio/webfolder/dakota/Request;)Lio/webfolder/dakota/HandlerStatus;" };
-            JavaField statusField{ envCurrentThread, "io/webfolder/dakota/HandlerStatus", "value", "I" };
 
             jobject request = envCurrentThread->NewObject(klassRequest.get(), constructorRequest.get(), (jlong)context);
             jobject globalRequest = envCurrentThread->NewGlobalRef(request);
@@ -699,17 +698,6 @@ public:
             const char* buffer = (const char*)env->GetDirectBufferAddress(body);
             context->response()->set_body(restinio::const_buffer(buffer, len));
         }
-    }
-
-    static void setBodyFile(JNIEnv* env, jobject that, jobject file)
-    {
-        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
-        auto* context = *(Context**)&ptr;
-        JavaClass klass{ env, local, "java/io/File" };
-        JavaMethod method{ env, local, "java/io/File", "getAbsolutePath", "()Ljava/lang/String;" };
-        jstring path = (jstring)env->CallObjectMethod(file, method.get());
-        String c_path{ env, path };
-        context->response()->set_body(restinio::sendfile(c_path.c_str()));
     }
 
     static void done(JNIEnv* env, jobject that)

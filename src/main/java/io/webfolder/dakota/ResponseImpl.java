@@ -72,10 +72,4 @@ class ResponseImpl implements Response {
                             .put(content);
         _body(buffer);
     }
-
-    @Override
-    public void body(File file) {
-        assert file != null;
-        _body(file);
-    }
 }
