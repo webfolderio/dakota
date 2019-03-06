@@ -505,17 +505,14 @@ public:
         using server_t = restinio::http_server_t<dakota_traits>;
 
         restinio::asio_ns::io_context ioctx;
-        thread_pool_t* pool = new thread_pool_t{ pool_size, ioctx };
+        thread_pool_t pool{ pool_size, ioctx };
         
         server_t* server = nullptr;
 
         auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
                             .port((uint16_t)port)
                             .address(s_address.c_str())
-                            .request_handler(std::move(router))
-                            .cleanup_func([server, pool]() {
-                                delete server, pool;
-                            });
+                            .request_handler(std::move(router));
 
         server = new server_t{
             restinio::external_io_context(ioctx),
@@ -527,7 +524,7 @@ public:
         });
 
         try {
-            pool->start();
+            pool.start();
         } catch (const std::exception& ex) {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
             env->ThrowNew(exceptionClass.get(), ex.what());
@@ -537,7 +534,7 @@ public:
         JavaField fServer = { env, "io/webfolder/dakota/WebServer", "server", "J" };
         env->SetLongField(that, fServer.get(), (jlong) server);
 
-        pool->wait();
+        pool.wait();
     }
 
     static void stop(JNIEnv* env, jobject that)
@@ -549,6 +546,7 @@ public:
             auto* server = (server_t*)ptrServer;
             server->io_context().stop();
             server->close_sync();
+            delete server;
         }
     }
 
