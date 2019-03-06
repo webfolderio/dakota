@@ -36,4 +36,4 @@ script:
   - cd ..
   - cd ..
   - mvn -q -DskipTests package
-  - mvn -q test
+  - mvn test -Dtest=TestHttpGet
