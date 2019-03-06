@@ -750,3 +750,12 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
     Restinio restinio{ env };
     return JNI_VERSION_1_8;
 }
+
+JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved) {
+    if (F_REQUEST) {
+        delete F_REQUEST;
+    }
+    if (F_RESPONSE) {
+        delete F_RESPONSE;
+    }
+}

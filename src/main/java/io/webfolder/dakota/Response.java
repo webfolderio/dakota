@@ -1,7 +1,5 @@
 package io.webfolder.dakota;
 
-import java.io.File;
-
 public interface Response {
 
     void body(String content);
