@@ -504,8 +504,8 @@ public:
         using settings_t = restinio::run_on_thread_pool_settings_t<dakota_traits>;
         using server_t = restinio::http_server_t<dakota_traits>;
 
-        restinio::asio_ns::io_context* ioctx = new restinio::asio_ns::io_context();
-        thread_pool_t* pool = new thread_pool_t{ pool_size, std::move(*ioctx) };
+        restinio::asio_ns::io_context ioctx;
+        thread_pool_t* pool = new thread_pool_t{ pool_size, ioctx };
         
         server_t* server = nullptr;
 
@@ -513,16 +513,16 @@ public:
                             .port((uint16_t)port)
                             .address(s_address.c_str())
                             .request_handler(std::move(router))
-                            .cleanup_func([server, pool, ioctx]() {
-                                delete server, ioctx, pool;
+                            .cleanup_func([server, pool]() {
+                                delete server, pool;
                             });
 
         server = new server_t{
-            restinio::external_io_context(*ioctx),
+            restinio::external_io_context(ioctx),
             std::forward<settings_t>(settings)
         };
 
-        asio::post(*ioctx, [&] {
+        asio::post(ioctx, [&] {
             server->open_sync();
         });
 
@@ -547,8 +547,8 @@ public:
         using server_t = restinio::http_server_t<dakota_traits>;
         if (ptrServer > 0) {
             auto* server = (server_t*)ptrServer;
-            server->close_sync();
             server->io_context().stop();
+            server->close_sync();
         }
     }
 
