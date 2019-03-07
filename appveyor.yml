@@ -18,7 +18,7 @@ build_script:
   - mvn -DskipTests -q clean package
 
 test_script:
-  - mvn -q surefire-report:report
+  - mvn surefire-report:report
 
 after_test:
   - ps: |
