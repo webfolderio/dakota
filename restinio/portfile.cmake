@@ -3,6 +3,8 @@ include(vcpkg_common_functions)
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO webfolderio/restinio
+    REF feaea2b04dbae0dbe6d1b8f01924086eacb1dff4
+    SHA512 1
     HEAD_REF master
 )
 
