@@ -11,7 +11,7 @@ before_build:
   - git --work-tree=C:\tools\vcpkg --git-dir=C:\tools\vcpkg\.git pull
 
 build_script:
-  - vcpkg.exe install restinio-webfolder:x64-windows-static
+  - vcpkg.exe install restinio:x64-windows-static
   - scripts\build.bat
   - mvn -DskipTests -q clean package
 
