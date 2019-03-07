@@ -278,7 +278,6 @@ private:
     restinio::request_handle_t* req_;
     restinio::response_builder_t<restinio::restinio_controlled_output_t>* res_;
     restinio::router::route_params_t* params_;
-    jobject requestObject_;
 
 public:
     Context(const Context&) = delete;
@@ -308,14 +307,6 @@ public:
     void setResponse(restinio::response_builder_t<restinio::restinio_controlled_output_t>* response)
     {
         res_ = response;
-    }
-    void setRequestObject(jobject requestObject)
-    {
-        requestObject_ = requestObject;
-    }
-    jobject requestObject() const
-    {
-        return requestObject_;
     }
     jstring param(JNIEnv* env, const char* name) const
     {
@@ -460,6 +451,7 @@ public:
             connections.insert(id, context);
             jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod.get(), id);
             if (envCurrentThread->ExceptionCheck()) {
+                connections.erase(id);
                 delete context;
                 return restinio::request_rejected();
             }
@@ -522,6 +514,8 @@ public:
         } catch (const std::exception& ex) {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
             env->ThrowNew(exceptionClass.get(), ex.what());
+            if (server)
+                delete server;
             return;
         }
 
@@ -578,6 +572,8 @@ public:
                 env->CallObjectMethod(map, mPut.get(), j_first, j_second);
             }
             return map;
+        } else {
+            return nullptr;
         }
     }
 
@@ -599,6 +595,8 @@ public:
                     env->CallObjectMethod(map, mPut.get(), j_name, j_value);
                 });
             return map;
+        } else {
+            return nullptr;
         }
     }
 
@@ -609,6 +607,8 @@ public:
             auto request = context->request();
             auto target = restinio::cast_to<std::string>((*request)->header().request_target());
             return env->NewStringUTF(target.c_str());
+        } else {
+            return nullptr;
         }
     }
 
@@ -619,6 +619,8 @@ public:
             String param{ env, name };
             jstring value = context->param(env, param.c_str());
             return value;
+        } else {
+            return nullptr;
         }
     }
 
@@ -628,6 +630,8 @@ public:
         if (connections.find(id, context)) {
             jstring value = context->param(env, index);
             return value;
+        } else {
+            return nullptr;
         }
     }
 
@@ -636,6 +640,8 @@ public:
         Context* context = nullptr;
         if (connections.find(id, context)) {
             return context->namedParamSize();
+        } else {
+            return -1;
         }
     }
 
@@ -644,6 +650,8 @@ public:
         Context* context = nullptr;
         if (connections.find(id, context)) {
             return context->indexedParamSize();
+        } else {
+            return -1;
         }
     }
 
@@ -653,6 +661,8 @@ public:
         if (connections.find(id, context)) {
             auto* request = context->request();
             return env->NewStringUTF((*request)->body().c_str());
+        } else {
+            return nullptr;
         }
     }
 
@@ -662,6 +672,8 @@ public:
         if (connections.find(id, context)) {
             auto* request = context->request();
             return (jlong)(*request)->body().length();
+        } else {
+            return -1;
         }
     }
 
@@ -705,7 +717,8 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(id, context)) {
-            context->response()->done([context](const auto& ec) {
+            context->response()->done([id, context](const auto& ec) {
+                connections.erase(id);
                 delete context;
             });
         }

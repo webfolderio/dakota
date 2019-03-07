@@ -1,7 +1,7 @@
 package io.webfolder.dakota;
 
-import static io.webfolder.dakota.HttpStatus.*;
 import static io.webfolder.dakota.HandlerStatus.accepted;
+import static io.webfolder.dakota.HttpStatus.OK;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 

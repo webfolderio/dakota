@@ -20,6 +20,10 @@ public class TestMultipleServer {
 
     private WebServer server2;
 
+    private long id1;
+
+    private long id2;
+
     @Before
     public void init() {
         server1 = new WebServer();
@@ -33,6 +37,7 @@ public class TestMultipleServer {
             request1.createResponse(id, OK);
             response1.body(id, "server1");
             response1.done(id);
+            id1 = id;
             return accepted;
         });
 
@@ -49,6 +54,7 @@ public class TestMultipleServer {
             request2.createResponse(id, OK);
             response2.body(id, "server2");
             response2.done(id);
+            id2 = id;
             return accepted;
         });
 
@@ -73,10 +79,12 @@ public class TestMultipleServer {
         okhttp3.Response resp1 = client.newCall(req1).execute();
         String body1 = resp1.body().string();
         assertEquals("server1", body1);
+        assertEquals(1, id1);
 
         okhttp3.Request req2 = new okhttp3.Request.Builder().url("http://localhost:2020/foo").build();
         okhttp3.Response resp2 = client.newCall(req2).execute();
         String body2 = resp2.body().string();
         assertEquals("server2", body2);
+        assertEquals(2, id2);
     }
 }
