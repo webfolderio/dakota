@@ -4,6 +4,7 @@ import static io.webfolder.dakota.HandlerStatus.accepted;
 import static io.webfolder.dakota.HttpStatus.OK;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 
@@ -79,12 +80,12 @@ public class TestMultipleServer {
         okhttp3.Response resp1 = client.newCall(req1).execute();
         String body1 = resp1.body().string();
         assertEquals("server1", body1);
-        assertEquals(1, id1);
 
         okhttp3.Request req2 = new okhttp3.Request.Builder().url("http://localhost:2020/foo").build();
         okhttp3.Response resp2 = client.newCall(req2).execute();
         String body2 = resp2.body().string();
         assertEquals("server2", body2);
-        assertEquals(2, id2);
+
+        assertTrue(id2 > id1);
     }
 }

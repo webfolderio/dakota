@@ -12,6 +12,7 @@ before_build:
 
 build_script:
   - vcpkg.exe install restinio:x64-windows-static
+  - scripts\patch.bat
   - scripts\build.bat
   - mvn -DskipTests -q clean package
 

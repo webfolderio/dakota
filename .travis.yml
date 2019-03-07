@@ -25,6 +25,7 @@ install:
   - cd ..
 
 script:
+  - patch "/home/travis/build/webfolderio/dakota/vcpkg/installed/x64-linux/include/restinio/impl/connection.hpp" "native/connection-counter.patch"
   - cd native
   - mkdir build
   - cd build

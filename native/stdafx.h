@@ -3,8 +3,8 @@
 #include <fmt/format.h>
 #include <jni.h>
 
-#include "lib/HashMap.hpp"
-#include "lib/HashNode.hpp"
+#include "HashMap.hpp"
+#include "HashNode.hpp"
 
 #ifdef __GNUG__
 #include <inttypes.h>

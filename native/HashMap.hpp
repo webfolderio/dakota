@@ -6,7 +6,7 @@
 #include <iostream>
 #include <functional>
 #include <mutex>
-#include "lib/HashNode.hpp"
+#include "HashNode.hpp"
 
 constexpr size_t HASH_SIZE_DEFAULT = 2048;
 
