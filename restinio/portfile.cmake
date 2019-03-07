@@ -4,7 +4,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO webfolderio/restinio
     REF feaea2b04dbae0dbe6d1b8f01924086eacb1dff4
-    SHA512 1
+    SHA512 c9120d8ef88f4918ba773ede76a2017162ae17212a5782859d02ebd3306eb51ecdfbd4a34b93665f2cfae805a4f789279a1f6ea638473fd1ab5eaad9b04aa155
     HEAD_REF master
 )
 
