@@ -12,7 +12,7 @@ class ResponseImpl implements Response {
 
     private static final ByteOrder ORDER = nativeOrder();
 
-    public ResponseImpl(long context) {
+    ResponseImpl(long context) {
         this.context = context;
     }
 

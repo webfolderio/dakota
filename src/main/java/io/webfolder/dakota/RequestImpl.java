@@ -16,8 +16,11 @@ class RequestImpl implements Request {
 
     private final long context;
 
-    public RequestImpl(long context) {
+    private final long id;
+
+    RequestImpl(long context, long id) {
         this.context = context;
+        this.id = id;
     }
 
     @Override
@@ -48,6 +51,8 @@ class RequestImpl implements Request {
     private native long _length();
 
     private native void _content(ByteBuffer buffer);
+
+    private native String _toString();
 
     @Override
     public Response ok() {
@@ -119,5 +124,37 @@ class RequestImpl implements Request {
     @Override
     public long length() {
         return _length();
+    }
+
+    @Override
+    public long id() {
+        return id;
+    }
+
+    @Override
+    public String toString() {
+        return _toString();
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + (int) (id ^ (id >>> 32));
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        RequestImpl other = (RequestImpl) obj;
+        if (id != other.id)
+            return false;
+        return true;
     }
 }

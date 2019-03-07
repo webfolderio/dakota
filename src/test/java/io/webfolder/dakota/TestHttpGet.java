@@ -18,6 +18,10 @@ public class TestHttpGet {
 
     private WebServer server;
 
+    private long id;
+
+    private String str;
+
     @Before
     public void init() {
         server = new WebServer();
@@ -28,6 +32,8 @@ public class TestHttpGet {
             Response response = request.ok();
             response.body("hello, world!");
             response.done();
+            id = request.id();
+            str = request.toString();
             return accepted;
         });
 
@@ -48,5 +54,7 @@ public class TestHttpGet {
         Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo").build();
         String body = client.newCall(req).execute().body().string();
         assertEquals("hello, world!", body);
+        assertEquals(1, id);
+        assertEquals("{req_id: 0, conn_id: 1, path: /foo, query: }", str);
     }
 }

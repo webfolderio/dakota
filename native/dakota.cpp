@@ -1,6 +1,8 @@
 #include "stdafx.h"
 
+#ifdef __GNUG__
 #pragma GCC diagnostic ignored "-Wwrite-strings"
+#endif
 
 #define IDX_METHOD 0
 #define IDX_PATH 1
@@ -283,9 +285,12 @@ public:
     Context(Context&&) = delete;
     ~Context()
     {
-        delete req_;
-        delete res_;
-        delete params_;
+        if (req_)
+            delete req_;
+        if (res_)
+            delete res_;
+        if (params_)
+            delete params_;
         auto env = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
         if (env != nullptr) {
             env->DeleteGlobalRef(requestObject_);
@@ -397,7 +402,8 @@ struct Restinio {
             "_indexedParamSize", "()I", (void*)&Restinio::indexedParamSize,
             "_body", "()Ljava/lang/String;", (void*)&Restinio::getBody,
             "_length", "()J", (void*)&Restinio::length,
-            "_content", "(Ljava/nio/ByteBuffer;)V", (void*)&Restinio::getContent
+            "_content", "(Ljava/nio/ByteBuffer;)V", (void*)&Restinio::getContent,
+            "_toString", "()Ljava/lang/String;", (void*)&Restinio::toString
         };
 
         JavaClass request = { env, "io/webfolder/dakota/RequestImpl" };
@@ -442,8 +448,8 @@ public:
         jint port = (jint)env->CallIntMethod(serverSettings, mGetPort.get());
         jstring address = (jstring)env->CallObjectMethod(serverSettings, mAddress.get());
         String s_address{ env, address };
-        
-        JavaMethod constructorRequest{ env, "io/webfolder/dakota/RequestImpl", "<init>", "(J)V" };
+
+        JavaMethod constructorRequest{ env, "io/webfolder/dakota/RequestImpl", "<init>", "(JJ)V" };
         JavaClass klassRequest{ env, "io/webfolder/dakota/RequestImpl" };
         JavaMethod handleMethod{ env, "io/webfolder/dakota/Handler", "handle", "(Lio/webfolder/dakota/Request;)Lio/webfolder/dakota/HandlerStatus;" };
         JavaField statusField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
@@ -460,8 +466,10 @@ public:
                 delete context;
                 return restinio::request_rejected();
             }
-
-            jobject request = envCurrentThread->NewObject(klassRequest.get(), constructorRequest.get(), (jlong)context);
+            jobject request = envCurrentThread->NewObject(klassRequest.get(),
+                constructorRequest.get(),
+                (jlong)context,
+                (jlong)req->connection_id());
             jobject globalRequest = envCurrentThread->NewGlobalRef(request);
             envCurrentThread->DeleteLocalRef(request);
             context->setRequestObject(globalRequest);
@@ -507,7 +515,7 @@ public:
 
         restinio::asio_ns::io_context ioctx;
         thread_pool_t pool{ pool_size, ioctx };
-        
+
         server_t* server = nullptr;
 
         auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
@@ -533,7 +541,7 @@ public:
         }
 
         JavaField fServer = { env, "io/webfolder/dakota/WebServer", "server", "J" };
-        env->SetLongField(that, fServer.get(), (jlong) server);
+        env->SetLongField(that, fServer.get(), (jlong)server);
 
         pool.wait();
     }
@@ -677,6 +685,15 @@ public:
 #endif
     }
 
+    static jstring toString(JNIEnv* env, jobject that)
+    {
+        jlong ptr = env->GetLongField(that, F_REQUEST->get());
+        auto* context = *(Context**)&ptr;
+        auto* request = context->request();
+        std::string str = fmt::format("{}", *(*request));
+        return env->NewStringUTF(str.c_str());
+    }
+
     static void setBody(JNIEnv* env, jobject that, jstring body)
     {
         jlong ptr = env->GetLongField(that, F_RESPONSE->get());
@@ -747,7 +764,8 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
     return JNI_VERSION_1_8;
 }
 
-JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved) {
+JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
+{
     if (F_REQUEST) {
         delete F_REQUEST;
     }

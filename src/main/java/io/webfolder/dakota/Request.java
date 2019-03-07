@@ -27,4 +27,6 @@ public interface Request {
     int indexedParamSize();
 
     String target();
+
+    long id();
 }
