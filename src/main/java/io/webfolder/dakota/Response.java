@@ -4,19 +4,19 @@ import java.nio.ByteBuffer;
 
 public interface Response {
 
-    void body(String content);
+    void body(long id, String content);
 
-    void body(byte[] content);
+    void body(long id, byte[] content);
 
-    void body(ByteBuffer content);
+    void body(long id, ByteBuffer content);
 
-    void appendHeader(String name, String value);
+    void appendHeader(long id, String name, String value);
 
-    void closeConnection();
+    void closeConnection(long id);
 
-    void keepAliveConnection();
+    void keepAliveConnection(long id);
 
-    void appendHeaderDateField();
+    void appendHeaderDateField(long id);
 
-    void done();
+    void done(long id);
 }

@@ -1,6 +1,7 @@
 package io.webfolder.dakota;
 
 import static io.webfolder.dakota.HandlerStatus.accepted;
+import static io.webfolder.dakota.HttpStatus.OK;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -13,7 +14,6 @@ import org.junit.Test;
 
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
-import okhttp3.Request;
 
 public class TestAppendDateHeader {
 
@@ -23,13 +23,16 @@ public class TestAppendDateHeader {
     public void init() {
         server = new WebServer();
 
+        Request request = server.getRequest();
+        Response response = server.getResponse();
+
         Router router = new Router();
 
-        router.get("/foo", request -> {
-            Response response = request.ok();
-            response.body("hello, world!");
-            response.appendHeaderDateField();
-            response.done();
+        router.get("/foo", id -> {
+            request.createResponse(id, OK);
+            response.body(id, "hello, world!");
+            response.appendHeaderDateField(id);
+            response.done(id);
             return accepted;
         });
 
@@ -47,7 +50,7 @@ public class TestAppendDateHeader {
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).build();
-        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo").build();
+        okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo").build();
         okhttp3.Response resp = client.newCall(req).execute();
         String body = resp.body().string();
         assertEquals("hello, world!", body);

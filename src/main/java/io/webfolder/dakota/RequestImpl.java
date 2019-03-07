@@ -1,6 +1,5 @@
 package io.webfolder.dakota;
 
-import static io.webfolder.dakota.HttpStatus.OK;
 import static java.lang.Integer.MAX_VALUE;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.nio.ByteOrder.nativeOrder;
@@ -14,54 +13,36 @@ class RequestImpl implements Request {
 
     private static final ByteOrder ORDER = nativeOrder();
 
-    private final long context;
+    private native void _createResponse(long id, int status, String reasonPhrase);
 
-    private final long id;
+    private native Map<String, String> _query(long id);
 
-    RequestImpl(long context, long id) {
-        this.context = context;
-        this.id = id;
+    private native Map<String, String> _header(long id);
+
+    private native String _target(long id);
+
+    private native String _param(long id, String name);
+
+    private native String _param(long id, int index);
+
+    private native int _namedParamSize(long id);
+
+    private native int _indexedParamSize(long id);
+
+    private native String _body(long id);
+
+    private native long _length(long id);
+
+    private native void _content(long id, ByteBuffer buffer);
+
+    @Override
+    public void createResponse(long id, HttpStatus status) {
+        _createResponse(id, status.value, status.reasonPhrase);
     }
 
     @Override
-    public Response createResponse(HttpStatus status) {
-        _createResponse(status.value, status.reasonPhrase);
-        ResponseImpl response = new ResponseImpl(context);
-        return response;
-    }
-
-    private native void _createResponse(int status, String reasonPhrase);
-
-    private native Map<String, String> _query();
-
-    private native Map<String, String> _header();
-
-    private native String _target();
-
-    private native String _param(String name);
-
-    private native String _param(int index);
-
-    private native int _namedParamSize();
-
-    private native int _indexedParamSize();
-
-    private native String _body();
-
-    private native long _length();
-
-    private native void _content(ByteBuffer buffer);
-
-    private native String _toString();
-
-    @Override
-    public Response ok() {
-        return createResponse(OK);
-    }
-
-    @Override
-    public Map<String, String> query() {
-        Map<String, String> map = _query();
+    public Map<String, String> query(long id) {
+        Map<String, String> map = _query(id);
         if (map == null) {
             return emptyMap();
         }
@@ -69,8 +50,8 @@ class RequestImpl implements Request {
     }
 
     @Override
-    public Map<String, String> header() {
-        Map<String, String> map = _header();
+    public Map<String, String> header(long id) {
+        Map<String, String> map = _header(id);
         if (map == null) {
             return emptyMap();
         }
@@ -78,83 +59,51 @@ class RequestImpl implements Request {
     }
 
     @Override
-    public String target() {
-        return _target();
+    public String target(long id) {
+        return _target(id);
     }
 
     @Override
-    public String param(String name) {
-        return _param(name);
+    public String param(long id, String name) {
+        return _param(id, name);
     }
 
     @Override
-    public String param(int index) {
-        return _param(index);
+    public String param(long id, int index) {
+        return _param(id, index);
     }
 
     @Override
-    public int namedParamSize() {
-        return _namedParamSize();
+    public int namedParamSize(long id) {
+        return _namedParamSize(id);
     }
 
     @Override
-    public int indexedParamSize() {
-        return _indexedParamSize();
+    public int indexedParamSize(long id) {
+        return _indexedParamSize(id);
     }
 
     @Override
-    public String body() {
-        return _body();
+    public String body(long id) {
+        return _body(id);
     }
 
     @Override
-    public byte[] content() {
-        long length = length();
+    public byte[] content(long id) {
+        long length = length(id);
         if (length > MAX_VALUE) {
             throw new RuntimeException();
         }
         ByteBuffer buffer = allocateDirect((int) length)
                                 .order(ORDER);
-        _content(buffer);
+        _content(id, buffer);
         byte[] content = new byte[buffer.remaining()];
         buffer.get(content);
         return content;
     }
 
     @Override
-    public long length() {
-        return _length();
-    }
-
-    @Override
-    public long id() {
-        return id;
-    }
-
-    @Override
-    public String toString() {
-        return _toString();
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (int) (id ^ (id >>> 32));
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj)
-            return true;
-        if (obj == null)
-            return false;
-        if (getClass() != obj.getClass())
-            return false;
-        RequestImpl other = (RequestImpl) obj;
-        if (id != other.id)
-            return false;
-        return true;
+    public long length(long id) {
+        return _length(id);
     }
 }

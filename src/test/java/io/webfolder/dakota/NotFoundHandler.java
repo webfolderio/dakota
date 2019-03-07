@@ -5,10 +5,16 @@ import static io.webfolder.dakota.HttpStatus.NotFound;
 
 public class NotFoundHandler implements Handler {
 
+    private final WebServer server;
+
+    public NotFoundHandler(WebServer server) {
+        this.server = server;
+    }
+
     @Override
-    public HandlerStatus handle(Request request) {
-        Response response = request.createResponse(NotFound);
-        response.done();
+    public HandlerStatus handle(long id) {
+        server.getRequest().createResponse(id, NotFound);
+        server.getResponse().done(id);
         return accepted;
     }
 }

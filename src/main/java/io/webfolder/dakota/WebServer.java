@@ -37,6 +37,10 @@ public class WebServer {
 
     private final Settings settings;
 
+    private final Request request = new RequestImpl();
+
+    private final Response response = new ResponseImpl();
+
     // ------------------------------------------------------------------------
     // private native methods
     // ------------------------------------------------------------------------
@@ -66,5 +70,13 @@ public class WebServer {
 
     public void stop() {
         _stop();
+    }
+
+    public Request getRequest() {
+        return request;
+    }
+
+    public Response getResponse() {
+        return response;
     }
 }

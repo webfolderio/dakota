@@ -1,6 +1,7 @@
 package io.webfolder.dakota;
 
 import static io.webfolder.dakota.HandlerStatus.accepted;
+import static io.webfolder.dakota.HttpStatus.OK;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
@@ -13,7 +14,6 @@ import org.junit.Test;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
-import okhttp3.Request;
 import okhttp3.RequestBody;
 
 public class TestHttpPostByteArray {
@@ -24,13 +24,16 @@ public class TestHttpPostByteArray {
     public void init() {
         server = new WebServer();
 
+        Request request = server.getRequest();
+        Response response = server.getResponse();
+
         Router router = new Router();
 
-        router.post("/foo", request -> {
-            String body = request.body();
-            Response response = request.ok();
-            response.body(body.getBytes());
-            response.done();
+        router.post("/foo", id -> {
+            request.createResponse(id, OK);
+            String body = request.body(id);
+            response.body(id, body.getBytes());
+            response.done(id);
             return accepted;
         });
 
@@ -48,7 +51,7 @@ public class TestHttpPostByteArray {
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).build();
-        Request req = new okhttp3.Request.Builder()
+        okhttp3.Request req = new okhttp3.Request.Builder()
                                 .url("http://localhost:8080/foo")
                                 .post(RequestBody.create(MediaType.parse("application/octet-stream"), "hello, world!".getBytes()))
                             .build();

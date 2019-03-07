@@ -1,6 +1,7 @@
 package io.webfolder.dakota;
 
 import static io.webfolder.dakota.HandlerStatus.accepted;
+import static io.webfolder.dakota.HttpStatus.OK;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
@@ -12,7 +13,6 @@ import org.junit.Test;
 
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
-import okhttp3.Request;
 
 public class TestHttpIndexParam {
 
@@ -28,16 +28,19 @@ public class TestHttpIndexParam {
     public void init() {
         server = new WebServer();
 
+        Request request = server.getRequest();
+        Response response = server.getResponse();
+
         Router router = new Router();
 
-        router.get("/foo/([a-z_]+)", request -> {
-            String bar = request.param(0);
+        router.get("/foo/([a-z_]+)", id -> {
+            request.createResponse(id, OK);
+            String bar = request.param(id, 0);
             this.bar = bar;
-            this.nps = request.namedParamSize();
-            this.ips = request.indexedParamSize();
-            Response response = request.ok();
-            response.body("hello, world!");
-            response.done();
+            this.nps = request.namedParamSize(id);
+            this.ips = request.indexedParamSize(id);
+            response.body(id, "hello, world!");
+            response.done(id);
             return accepted;
         });
 
@@ -55,7 +58,7 @@ public class TestHttpIndexParam {
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).build();
-        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo/test_param").build();
+        okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo/test_param").build();
         String body = client.newCall(req).execute().body().string();
         assertEquals("hello, world!", body);
         assertEquals("test_param", bar);

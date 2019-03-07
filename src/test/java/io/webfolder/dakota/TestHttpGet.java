@@ -1,6 +1,7 @@
 package io.webfolder.dakota;
 
 import static io.webfolder.dakota.HandlerStatus.accepted;
+import static io.webfolder.dakota.HttpStatus.OK;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
@@ -12,7 +13,6 @@ import org.junit.Test;
 
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
-import okhttp3.Request;
 
 public class TestHttpGet {
 
@@ -20,20 +20,20 @@ public class TestHttpGet {
 
     private long id;
 
-    private String str;
-
     @Before
     public void init() {
         server = new WebServer();
 
+        Request request = server.getRequest();
+        Response response = server.getResponse();
+
         Router router = new Router();
 
-        router.get("/foo", request -> {
-            Response response = request.ok();
-            response.body("hello, world!");
-            response.done();
-            id = request.id();
-            str = request.toString();
+        router.get("/foo", id -> {
+            this.id = id;
+            request.createResponse(id, OK);
+            response.body(id, "hello, world!");
+            response.done(id);
             return accepted;
         });
 
@@ -51,10 +51,9 @@ public class TestHttpGet {
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).build();
-        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo").build();
+        okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo").build();
         String body = client.newCall(req).execute().body().string();
         assertEquals("hello, world!", body);
         assertEquals(1, id);
-        assertEquals("{req_id: 0, conn_id: 1, path: /foo, query: }", str);
     }
 }

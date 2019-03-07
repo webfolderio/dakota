@@ -36,7 +36,7 @@ if(MSVC)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${PROJECT_BINARY_DIR}/../../src/main/resources/META-INF)
 endif(MSVC)
 
-add_library(dakota SHARED stdafx.h stdafx.cpp dakota.cpp)
+add_library(dakota SHARED stdafx.h stdafx.cpp dakota.cpp lib/HashMap.hpp lib/HashNode.hpp)
 
 target_link_libraries(dakota PRIVATE restinio::restinio Threads::Threads)
 

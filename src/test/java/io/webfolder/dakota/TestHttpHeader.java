@@ -1,6 +1,7 @@
 package io.webfolder.dakota;
 
 import static io.webfolder.dakota.HandlerStatus.accepted;
+import static io.webfolder.dakota.HttpStatus.OK;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -14,7 +15,6 @@ import org.junit.Test;
 
 import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
-import okhttp3.Request;
 
 public class TestHttpHeader {
 
@@ -26,12 +26,15 @@ public class TestHttpHeader {
     public void init() {
         server = new WebServer();
 
+        Request request = server.getRequest();
+        Response response = server.getResponse();
+
         Router router = new Router();
 
-        router.get("/foo", request -> {
-            Response response = request.ok();
-            headerMap = request.header();
-            response.done();
+        router.get("/foo", id -> {
+            request.createResponse(id, OK);
+            headerMap = request.header(id);
+            response.done(id);
             return accepted;
         });
 
@@ -49,7 +52,7 @@ public class TestHttpHeader {
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(240, SECONDS).readTimeout(240, SECONDS)
                 .connectTimeout(240, SECONDS).build();
-        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo?foo=bar&abc=123").build();
+        okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo?foo=bar&abc=123").build();
         client.newCall(req).execute();
         assertNotNull(headerMap);
         assertEquals("localhost:8080", headerMap.get("Host"));

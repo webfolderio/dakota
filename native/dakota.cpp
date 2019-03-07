@@ -291,10 +291,6 @@ public:
             delete res_;
         if (params_)
             delete params_;
-        auto env = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
-        if (env != nullptr) {
-            env->DeleteGlobalRef(requestObject_);
-        }
     }
     Context(restinio::request_handle_t* req, restinio::router::route_params_t* params)
         : req_(req)
@@ -374,8 +370,7 @@ public:
     }
 };
 
-static JavaField* F_REQUEST;
-static JavaField* F_RESPONSE;
+static CTSL::HashMap<restinio::connection_id_t, Context*> connections;
 
 struct Restinio {
 
@@ -392,31 +387,30 @@ struct Restinio {
         env->RegisterNatives(server.get(), serverMethods, sizeof(serverMethods) / sizeof(serverMethods[0]));
 
         JNINativeMethod requestImpl[] = {
-            "_createResponse", "(ILjava/lang/String;)V", (void*)&Restinio::createResponse,
-            "_query", "()Ljava/util/Map;", (void*)&Restinio::query,
-            "_header", "()Ljava/util/Map;", (void*)&Restinio::header,
-            "_target", "()Ljava/lang/String;", (void*)&Restinio::target,
-            "_param", "(Ljava/lang/String;)Ljava/lang/String;", (void*)&Restinio::getParamByName,
-            "_param", "(I)Ljava/lang/String;", (void*)&Restinio::getParamByIndex,
-            "_namedParamSize", "()I", (void*)&Restinio::namedParamSize,
-            "_indexedParamSize", "()I", (void*)&Restinio::indexedParamSize,
-            "_body", "()Ljava/lang/String;", (void*)&Restinio::getBody,
-            "_length", "()J", (void*)&Restinio::length,
-            "_content", "(Ljava/nio/ByteBuffer;)V", (void*)&Restinio::getContent,
-            "_toString", "()Ljava/lang/String;", (void*)&Restinio::toString
+            "_createResponse", "(JILjava/lang/String;)V", (void*)&Restinio::createResponse,
+            "_query", "(J)Ljava/util/Map;", (void*)&Restinio::query,
+            "_header", "(J)Ljava/util/Map;", (void*)&Restinio::header,
+            "_target", "(J)Ljava/lang/String;", (void*)&Restinio::target,
+            "_param", "(JLjava/lang/String;)Ljava/lang/String;", (void*)&Restinio::getParamByName,
+            "_param", "(JI)Ljava/lang/String;", (void*)&Restinio::getParamByIndex,
+            "_namedParamSize", "(J)I", (void*)&Restinio::namedParamSize,
+            "_indexedParamSize", "(J)I", (void*)&Restinio::indexedParamSize,
+            "_body", "(J)Ljava/lang/String;", (void*)&Restinio::getBody,
+            "_length", "(J)J", (void*)&Restinio::length,
+            "_content", "(JLjava/nio/ByteBuffer;)V", (void*)&Restinio::getContent
         };
 
         JavaClass request = { env, "io/webfolder/dakota/RequestImpl" };
         env->RegisterNatives(request.get(), requestImpl, sizeof(requestImpl) / sizeof(requestImpl[0]));
 
         JNINativeMethod responseImpl[] = {
-            "_done", "()V", (void*)&Restinio::done,
-            "_body", "(Ljava/lang/String;)V", (void*)&Restinio::setBody,
-            "_body", "(Ljava/nio/ByteBuffer;)V", (void*)&Restinio::setBodyByteBuffer,
-            "_appendHeader", "(Ljava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader,
-            "_closeConnection", "()V", (void*)&Restinio::closeConnection,
-            "_keepAliveConnection", "()V", (void*)&Restinio::keepAliveConnection,
-            "_appendHeaderDateField", "()V", (void*)&Restinio::appendHeaderDateField
+            "_done", "(J)V", (void*)&Restinio::done,
+            "_body", "(JLjava/lang/String;)V", (void*)&Restinio::setBody,
+            "_body", "(JLjava/nio/ByteBuffer;)V", (void*)&Restinio::setBodyByteBuffer,
+            "_appendHeader", "(JLjava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader,
+            "_closeConnection", "(J)V", (void*)&Restinio::closeConnection,
+            "_keepAliveConnection", "(J)V", (void*)&Restinio::keepAliveConnection,
+            "_appendHeaderDateField", "(J)V", (void*)&Restinio::appendHeaderDateField
         };
         JavaClass response = { env, "io/webfolder/dakota/ResponseImpl" };
         env->RegisterNatives(response.get(), responseImpl, sizeof(responseImpl) / sizeof(responseImpl[0]));
@@ -440,18 +434,14 @@ public:
 
     static void run(JNIEnv* env, jobject that, jobject serverSettings, jobjectArray routes, jobject nonMatchedHandler)
     {
-        F_REQUEST = new JavaField{ env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        F_RESPONSE = new JavaField{ env, "io/webfolder/dakota/ResponseImpl", "context", "J" };
-
         JavaMethod mGetPort{ env, "io/webfolder/dakota/Settings", "getPort", "()I" };
         JavaMethod mAddress{ env, "io/webfolder/dakota/Settings", "getAddress", "()Ljava/lang/String;" };
         jint port = (jint)env->CallIntMethod(serverSettings, mGetPort.get());
         jstring address = (jstring)env->CallObjectMethod(serverSettings, mAddress.get());
         String s_address{ env, address };
 
-        JavaMethod constructorRequest{ env, "io/webfolder/dakota/RequestImpl", "<init>", "(JJ)V" };
         JavaClass klassRequest{ env, "io/webfolder/dakota/RequestImpl" };
-        JavaMethod handleMethod{ env, "io/webfolder/dakota/Handler", "handle", "(Lio/webfolder/dakota/Request;)Lio/webfolder/dakota/HandlerStatus;" };
+        JavaMethod handleMethod{ env, "io/webfolder/dakota/Handler", "handle", "(J)Lio/webfolder/dakota/HandlerStatus;" };
         JavaField statusField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
 
         auto execute = [&](jobject handler,
@@ -466,14 +456,9 @@ public:
                 delete context;
                 return restinio::request_rejected();
             }
-            jobject request = envCurrentThread->NewObject(klassRequest.get(),
-                constructorRequest.get(),
-                (jlong)context,
-                (jlong)req->connection_id());
-            jobject globalRequest = envCurrentThread->NewGlobalRef(request);
-            envCurrentThread->DeleteLocalRef(request);
-            context->setRequestObject(globalRequest);
-            jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod.get(), globalRequest);
+            jlong id = (jlong)req->connection_id();
+            connections.insert(id, context);
+            jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod.get(), id);
             if (envCurrentThread->ExceptionCheck()) {
                 delete context;
                 return restinio::request_rejected();
@@ -559,197 +544,205 @@ public:
         }
     }
 
-    static void createResponse(JNIEnv* env, jobject that, jint status, jstring reasonPhrase)
+    static void createResponse(JNIEnv* env, jobject that, jlong id, jint status, jstring reasonPhrase)
     {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        restinio::request_handle_t* request = context->request();
-        String str{ env, reasonPhrase };
-        restinio::http_status_line_t status_line = restinio::http_status_line_t{ restinio::http_status_code_t{ (uint16_t)status }, str.c_str() };
-        auto response = std::make_unique<restinio::response_builder_t<restinio::restinio_controlled_output_t>>(
-            (*request)->create_response(status_line));
-        context->setResponse(response.release());
-    }
-
-    static jobject query(JNIEnv* env, jobject that)
-    {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        restinio::request_handle_t* request = context->request();
-        const auto qp = restinio::parse_query((*request)->header().query());
-        if (qp.empty()) {
-            return nullptr;
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            restinio::request_handle_t* request = context->request();
+            String str{ env, reasonPhrase };
+            restinio::http_status_line_t status_line = restinio::http_status_line_t{ restinio::http_status_code_t{ (uint16_t)status }, str.c_str() };
+            auto response = std::make_unique<restinio::response_builder_t<restinio::restinio_controlled_output_t>>(
+                (*request)->create_response(status_line));
+            context->setResponse(response.release());
         }
-        JavaClass kMap{ env, "java/util/LinkedHashMap" };
-        JavaMethod cMap{ env, "java/util/LinkedHashMap", "<init>", "(I)V" };
-        JavaMethod mPut{ env, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;" };
-        jobject map = env->NewObject(kMap.get(), cMap.get(), (jint)qp.size());
-        for (const auto p : qp) {
-            std::string first = restinio::cast_to<std::string>(p.first);
-            std::string second = restinio::cast_to<std::string>(p.second);
-            jstring j_first = env->NewStringUTF(first.c_str());
-            jstring j_second = env->NewStringUTF(second.c_str());
-            env->CallObjectMethod(map, mPut.get(), j_first, j_second);
+    }
+
+    static jobject query(JNIEnv* env, jobject that, jlong id)
+    {
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            restinio::request_handle_t* request = context->request();
+            const auto qp = restinio::parse_query((*request)->header().query());
+            if (qp.empty()) {
+                return nullptr;
+            }
+            JavaClass kMap{ env, "java/util/LinkedHashMap" };
+            JavaMethod cMap{ env, "java/util/LinkedHashMap", "<init>", "(I)V" };
+            JavaMethod mPut{ env, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;" };
+            jobject map = env->NewObject(kMap.get(), cMap.get(), (jint)qp.size());
+            for (const auto p : qp) {
+                std::string first = restinio::cast_to<std::string>(p.first);
+                std::string second = restinio::cast_to<std::string>(p.second);
+                jstring j_first = env->NewStringUTF(first.c_str());
+                jstring j_second = env->NewStringUTF(second.c_str());
+                env->CallObjectMethod(map, mPut.get(), j_first, j_second);
+            }
+            return map;
         }
-        return map;
     }
 
-    static jobject header(JNIEnv* env, jobject that)
+    static jobject header(JNIEnv* env, jobject that, jlong id)
     {
-        JavaField field = { env, "io/webfolder/dakota/RequestImpl", "context", "J" };
-        jlong ptr = env->GetLongField(that, field.get());
-        auto* context = *(Context**)&ptr;
-        auto* request = context->request();
-        JavaClass kMap{ env, "java/util/LinkedHashMap" };
-        JavaMethod cMap{ env, "java/util/LinkedHashMap", "<init>", "(I)V" };
-        JavaMethod mPut{ env, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;" };
-        jobject map = env->NewObject(kMap.get(), cMap.get(), (*request)->header().fields_count());
-        std::for_each(
-            (*request)->header().begin(),
-            (*request)->header().end(),
-            [&](const restinio::http_header_field_t& f) {
-                jstring j_name = env->NewStringUTF(f.name().c_str());
-                jstring j_value = env->NewStringUTF(f.value().c_str());
-                env->CallObjectMethod(map, mPut.get(), j_name, j_value);
-            });
-        return map;
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            auto* request = context->request();
+            JavaClass kMap{ env, "java/util/LinkedHashMap" };
+            JavaMethod cMap{ env, "java/util/LinkedHashMap", "<init>", "(I)V" };
+            JavaMethod mPut{ env, "java/util/Map", "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;" };
+            jobject map = env->NewObject(kMap.get(), cMap.get(), (*request)->header().fields_count());
+            std::for_each(
+                (*request)->header().begin(),
+                (*request)->header().end(),
+                [&](const restinio::http_header_field_t& f) {
+                    jstring j_name = env->NewStringUTF(f.name().c_str());
+                    jstring j_value = env->NewStringUTF(f.value().c_str());
+                    env->CallObjectMethod(map, mPut.get(), j_name, j_value);
+                });
+            return map;
+        }
     }
 
-    static jstring target(JNIEnv* env, jobject that)
+    static jstring target(JNIEnv* env, jobject that, jlong id)
     {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        auto request = context->request();
-        auto target = restinio::cast_to<std::string>((*request)->header().request_target());
-        return env->NewStringUTF(target.c_str());
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            auto request = context->request();
+            auto target = restinio::cast_to<std::string>((*request)->header().request_target());
+            return env->NewStringUTF(target.c_str());
+        }
     }
 
-    static jstring getParamByName(JNIEnv* env, jobject that, jstring name)
+    static jstring getParamByName(JNIEnv* env, jobject that, jlong id, jstring name)
     {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        String param{ env, name };
-        jstring value = context->param(env, param.c_str());
-        return value;
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            String param{ env, name };
+            jstring value = context->param(env, param.c_str());
+            return value;
+        }
     }
 
-    static jstring getParamByIndex(JNIEnv* env, jobject that, jint index)
+    static jstring getParamByIndex(JNIEnv* env, jobject that, jlong id, jint index)
     {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        jstring value = context->param(env, index);
-        return value;
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            jstring value = context->param(env, index);
+            return value;
+        }
     }
 
-    static jint namedParamSize(JNIEnv* env, jobject that)
+    static jint namedParamSize(JNIEnv* env, jobject that, jlong id)
     {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        return context->namedParamSize();
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            return context->namedParamSize();
+        }
     }
 
-    static jint indexedParamSize(JNIEnv* env, jobject that)
+    static jint indexedParamSize(JNIEnv* env, jobject that, jlong id)
     {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        return context->indexedParamSize();
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            return context->indexedParamSize();
+        }
     }
 
-    static jstring getBody(JNIEnv* env, jobject that)
+    static jstring getBody(JNIEnv* env, jobject that, jlong id)
     {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        auto* request = context->request();
-        return env->NewStringUTF((*request)->body().c_str());
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            auto* request = context->request();
+            return env->NewStringUTF((*request)->body().c_str());
+        }
     }
 
-    static jlong length(JNIEnv* env, jobject that)
+    static jlong length(JNIEnv* env, jobject that, jlong id)
     {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        auto* request = context->request();
-        return (jlong)(*request)->body().length();
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            auto* request = context->request();
+            return (jlong)(*request)->body().length();
+        }
     }
 
-    static void getContent(JNIEnv* env, jobject that, jobject buffer)
+    static void getContent(JNIEnv* env, jobject that, jlong id, jobject buffer)
     {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        auto* request = context->request();
-        jlong len = env->GetDirectBufferCapacity(buffer) + 1;
-        char* dest = (char*)env->GetDirectBufferAddress(buffer);
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            auto* request = context->request();
+            jlong len = env->GetDirectBufferCapacity(buffer) + 1;
+            char* dest = (char*)env->GetDirectBufferAddress(buffer);
 #ifdef _WIN32
-        strcpy_s(dest, (size_t)len, (*request)->body().c_str());
+            strcpy_s(dest, (size_t)len, (*request)->body().c_str());
 #else
-        strncpy(dest, (*request)->body().c_str(), (size_t)len);
+            strncpy(dest, (*request)->body().c_str(), (size_t)len);
 #endif
-    }
-
-    static jstring toString(JNIEnv* env, jobject that)
-    {
-        jlong ptr = env->GetLongField(that, F_REQUEST->get());
-        auto* context = *(Context**)&ptr;
-        auto* request = context->request();
-        std::string str = fmt::format("{}", *(*request));
-        return env->NewStringUTF(str.c_str());
-    }
-
-    static void setBody(JNIEnv* env, jobject that, jstring body)
-    {
-        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
-        auto* context = *(Context**)&ptr;
-        String str{ env, body };
-        context->response()->set_body(str.c_str());
-    }
-
-    static void setBodyByteBuffer(JNIEnv* env, jobject that, jobject body)
-    {
-        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
-        auto* context = *(Context**)&ptr;
-        if (body) {
-            std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
-            const char* buffer = (const char*)env->GetDirectBufferAddress(body);
-            context->response()->set_body(restinio::const_buffer(buffer, len));
         }
     }
 
-    static void done(JNIEnv* env, jobject that)
+    static void setBody(JNIEnv* env, jobject that, jlong id, jstring body)
     {
-        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
-        auto* context = *(Context**)&ptr;
-        context->response()->done([context](const auto& ec) {
-            delete context;
-        });
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            String str{ env, body };
+            context->response()->set_body(str.c_str());
+        }
     }
 
-    static void appendHeader(JNIEnv* env, jobject that, jstring name, jstring value)
+    static void setBodyByteBuffer(JNIEnv* env, jobject that, jlong id, jobject body)
     {
-        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
-        auto* context = *(Context**)&ptr;
-        String s_name{ env, name };
-        String s_value{ env, value };
-        context->response()->append_header(s_name.c_str(), s_value.c_str());
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            if (body) {
+                std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
+                const char* buffer = (const char*)env->GetDirectBufferAddress(body);
+                context->response()->set_body(restinio::const_buffer(buffer, len));
+            }
+        }
     }
 
-    static void closeConnection(JNIEnv* env, jobject that)
+    static void done(JNIEnv* env, jobject that, jlong id)
     {
-        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
-        auto* context = *(Context**)&ptr;
-        context->response()->connection_close();
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            context->response()->done([context](const auto& ec) {
+                delete context;
+            });
+        }
     }
 
-    static void keepAliveConnection(JNIEnv* env, jobject that)
+    static void appendHeader(JNIEnv* env, jobject that, jlong id, jstring name, jstring value)
     {
-        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
-        auto* context = *(Context**)&ptr;
-        context->response()->connection_keep_alive();
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            String s_name{ env, name };
+            String s_value{ env, value };
+            context->response()->append_header(s_name.c_str(), s_value.c_str());
+        }
     }
 
-    static void appendHeaderDateField(JNIEnv* env, jobject that)
+    static void closeConnection(JNIEnv* env, jobject that, jlong id)
     {
-        jlong ptr = env->GetLongField(that, F_RESPONSE->get());
-        auto* context = *(Context**)&ptr;
-        context->response()->append_header_date_field();
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            context->response()->connection_close();
+        }
+    }
+
+    static void keepAliveConnection(JNIEnv* env, jobject that, jlong id)
+    {
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            context->response()->connection_keep_alive();
+        }
+    }
+
+    static void appendHeaderDateField(JNIEnv* env, jobject that, jlong id)
+    {
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            context->response()->append_header_date_field();
+        }
     }
 };
 
@@ -762,14 +755,4 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved)
     jvm = vm;
     Restinio restinio{ env };
     return JNI_VERSION_1_8;
-}
-
-JNIEXPORT void JNI_OnUnload(JavaVM* vm, void* reserved)
-{
-    if (F_REQUEST) {
-        delete F_REQUEST;
-    }
-    if (F_RESPONSE) {
-        delete F_RESPONSE;
-    }
 }

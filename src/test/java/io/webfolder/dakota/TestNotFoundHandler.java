@@ -22,7 +22,7 @@ public class TestNotFoundHandler {
     public void init() {
         server = new WebServer();
         Router router = new Router();
-        new Thread(() -> server.run(router, new NotFoundHandler())).start();
+        new Thread(() -> server.run(router, new NotFoundHandler(server))).start();
     }
 
     @After
