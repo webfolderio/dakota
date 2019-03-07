@@ -8,12 +8,11 @@ environment:
     - JAVA_HOME: C:\Program Files\Java\jdk1.8.0
 
 before_build:
-  - mkdir C:\tools\vcpkg\ports\restinio-webfolder
-  - copy /Y restinio\CONTROL C:\tools\vcpkg\ports\restinio-webfolder\CONTROL
-  - copy /Y restinio\portfile.cmake C:\tools\vcpkg\ports\restinio-webfolder\portfile.cmake
+  - git --work-tree=C:\tools\vcpkg --git-dir=C:\tools\vcpkg\.git pull
 
 build_script:
   - vcpkg.exe install restinio-webfolder:x64-windows-static
+  - "C:\Program Files\git\usr\bin\patch.exe" C:\tools\vcpkg\installed\x64-windows-static\include\restinio\impl\connection.hpp native\connection-counter.patch
   - scripts\build.bat
   - mvn -DskipTests -q clean package
 
