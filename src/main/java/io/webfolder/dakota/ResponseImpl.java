@@ -62,6 +62,18 @@ class ResponseImpl implements Response {
     }
 
     @Override
+    public void body(ByteBuffer content) {
+        assert content != null;
+        if (!content.isDirect()) {
+            throw new IllegalArgumentException();
+        }
+        if (!content.order().equals(ORDER)) {
+            throw new IllegalArgumentException();
+        }
+        _body(content);
+    }
+
+    @Override
     public void body(byte[] content) {
         assert content != null;
         ByteBuffer buffer = allocateDirect(content.length)
