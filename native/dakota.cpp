@@ -691,9 +691,9 @@ public:
             auto* request = context->request();
             size_t len = (*request)->body().length();
             if (len < INT_MAX) {
-                jbyteArray arr = env->NewByteArray((jsize) len);
-                env->SetByteArrayRegion(arr, 0, (jsize) len, (jbyte*)(*request)->body().c_str());
-                return arr;
+                jbyteArray body = env->NewByteArray((jsize) len);
+                env->SetByteArrayRegion(body, 0, (jsize) len, (jbyte*)(*request)->body().c_str());
+                return body;
             } else {
                 JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
                 env->ThrowNew(exceptionClass.get(),
@@ -753,9 +753,15 @@ public:
     {
         Context* context = nullptr;
         if (body && connections.find(contextId, context)) {
-            char* content = (char*) env->GetByteArrayElements(body, nullptr);
-            jsize size = env->GetArrayLength(body);
-            context->response()->set_body(restinio::const_buffer(content, size));
+            jboolean isCopy;
+            const char* content = (const char*) env->GetByteArrayElements(body, &isCopy);
+            if (content) {
+                jsize size = env->GetArrayLength(body);
+                context->response()->set_body(restinio::const_buffer(content, size));
+                if (isCopy == JNI_TRUE) {
+                    env->ReleaseByteArrayElements(body, (jbyte*)content, JNI_ABORT);
+                }
+            }
         }
     }
 

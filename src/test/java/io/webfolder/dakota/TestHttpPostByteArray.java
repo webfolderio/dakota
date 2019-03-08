@@ -31,8 +31,9 @@ public class TestHttpPostByteArray {
 
         router.post("/foo", contextId -> {
             request.createResponse(contextId, OK);
-            String body = request.body(contextId);
-            response.body(contextId, body.getBytes());
+            String body = new String(request.bodyAsByteArray(contextId));
+            byte[] content = body.getBytes();
+            response.body(contextId, content);
             response.done(contextId);
             return accepted;
         });
