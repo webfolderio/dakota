@@ -8,6 +8,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.nio.ByteBuffer;
 
 import org.junit.After;
@@ -23,9 +24,19 @@ public class TestHttpPostByteBuffer {
 
     private WebServer server;
 
+    private int freePort;
+
     @Before
     public void init() {
-        server = new WebServer();
+        try (ServerSocket socket = new ServerSocket(0)) {
+            this.freePort = socket.getLocalPort();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        Settings settings = new Settings(freePort);
+
+        server = new WebServer(settings);
 
         Request request = server.getRequest();
         Response response = server.getResponse();
@@ -60,7 +71,7 @@ public class TestHttpPostByteBuffer {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).build();
         okhttp3.Request req = new okhttp3.Request.Builder()
-                                .url("http://localhost:8080/foo")
+                                .url("http://localhost:" + freePort + "/foo")
                                 .post(RequestBody.create(MediaType.parse("application/octet-stream"), "hello, world!".getBytes()))
                             .build();
         String body = client.newCall(req).execute().body().string();

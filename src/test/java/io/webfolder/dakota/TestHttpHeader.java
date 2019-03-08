@@ -7,6 +7,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.Map;
 
 import org.junit.After;
@@ -22,9 +23,19 @@ public class TestHttpHeader {
 
     private Map<String, String> headerMap;
 
+    private int freePort;
+
     @Before
     public void init() {
-        server = new WebServer();
+        try (ServerSocket socket = new ServerSocket(0)) {
+            this.freePort = socket.getLocalPort();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        Settings settings = new Settings(freePort);
+
+        server = new WebServer(settings);
 
         Request request = server.getRequest();
         Response response = server.getResponse();
@@ -52,9 +63,9 @@ public class TestHttpHeader {
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(240, SECONDS).readTimeout(240, SECONDS)
                 .connectTimeout(240, SECONDS).build();
-        okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:8080/foo?foo=bar&abc=123").build();
+        okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/foo?foo=bar&abc=123").build();
         client.newCall(req).execute();
         assertNotNull(headerMap);
-        assertEquals("localhost:8080", headerMap.get("Host"));
+        assertEquals("localhost:" + freePort, headerMap.get("Host"));
     }
 }

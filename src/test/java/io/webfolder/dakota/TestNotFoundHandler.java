@@ -4,6 +4,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 
 import org.junit.After;
 import org.junit.Before;
@@ -18,9 +19,20 @@ public class TestNotFoundHandler {
 
     private WebServer server;
 
+    private int freePort;
+
     @Before
     public void init() {
-        server = new WebServer();
+        try (ServerSocket socket = new ServerSocket(0)) {
+            this.freePort = socket.getLocalPort();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        Settings settings = new Settings(freePort);
+
+        server = new WebServer(settings);
+
         Router router = new Router();
         new Thread(() -> server.run(router, new NotFoundHandler(server))).start();
     }
@@ -36,7 +48,7 @@ public class TestNotFoundHandler {
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).build();
-        Request req = new okhttp3.Request.Builder().url("http://localhost:8080/invalid-url").build();
+        Request req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/invalid-url").build();
         Response response = client.newCall(req).execute();
         assertEquals(404, response.code());
     }

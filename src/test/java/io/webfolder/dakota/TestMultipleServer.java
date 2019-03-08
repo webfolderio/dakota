@@ -6,6 +6,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.net.ServerSocket;
 
 import org.junit.After;
 import org.junit.Before;
@@ -24,9 +25,21 @@ public class TestMultipleServer {
 
     private long id2;
 
+    private int freePort1;
+
+    private int freePort2;
+
     @Before
     public void init() {
-        server1 = new WebServer();
+        try (ServerSocket socket = new ServerSocket(0)) {
+            this.freePort1 = socket.getLocalPort();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        Settings settings1 = new Settings(freePort1);
+
+        server1 = new WebServer(settings1);
 
         Request request1 = server1.getRequest();
         Response response1 = server1.getResponse();
@@ -43,7 +56,15 @@ public class TestMultipleServer {
 
         new Thread(() -> server1.run(router1)).start();
 
-        server2 = new WebServer(new Settings(2020));
+        try (ServerSocket socket = new ServerSocket(0)) {
+            this.freePort2 = socket.getLocalPort();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        Settings settings2 = new Settings(freePort2);
+
+        server2 = new WebServer(settings2);
 
         Router router2 = new Router();
 
@@ -75,13 +96,13 @@ public class TestMultipleServer {
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).build();
-        okhttp3.Request req1 = new okhttp3.Request.Builder().url("http://localhost:8080/foo").build();
+        okhttp3.Request req1 = new okhttp3.Request.Builder().url("http://localhost:" + freePort1 + "/foo").build();
         okhttp3.Response resp1 = client.newCall(req1).execute();
         String body1 = resp1.body().string();
         assertEquals("server1", body1);
         assertEquals(1, id1);
 
-        okhttp3.Request req2 = new okhttp3.Request.Builder().url("http://localhost:2020/foo").build();
+        okhttp3.Request req2 = new okhttp3.Request.Builder().url("http://localhost:" + freePort2 + "/foo").build();
         okhttp3.Response resp2 = client.newCall(req2).execute();
         String body2 = resp2.body().string();
         assertEquals("server2", body2);
