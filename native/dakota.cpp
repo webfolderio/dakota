@@ -788,11 +788,12 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            if (context->getResponseNativeArray()) {
-                env->ReleaseByteArrayElements(context->getResponseArray(), context->getResponseNativeArray(), 0);
-                env->DeleteGlobalRef(context->getResponseArray());
-            }
             context->response()->done([contextId, context](const auto& ec) {
+                auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
+                if (envCurrentThread && context->getResponseNativeArray()) {
+                    envCurrentThread->ReleaseByteArrayElements(context->getResponseArray(), context->getResponseNativeArray(), 0);
+                    envCurrentThread->DeleteGlobalRef(context->getResponseArray());
+                }
                 connections.erase(contextId);
                 delete context;
             });
