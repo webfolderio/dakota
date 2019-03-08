@@ -361,7 +361,7 @@ public:
     }
 };
 
-static CTSL::HashMap<restinio::connection_id_t, Context*> connections;
+static CTSL::HashMap<std::uint64_t, Context*> connections;
 
 struct Restinio {
 
@@ -388,7 +388,8 @@ struct Restinio {
             "_indexedParamSize", "(J)I", (void*)&Restinio::indexedParamSize,
             "_body", "(J)Ljava/lang/String;", (void*)&Restinio::getBody,
             "_length", "(J)J", (void*)&Restinio::length,
-            "_content", "(JLjava/nio/ByteBuffer;)V", (void*)&Restinio::getContent
+            "_content", "(JLjava/nio/ByteBuffer;)V", (void*)&Restinio::getContent,
+            "_connectionId", "(J)J", (void*)&Restinio::connectionId
         };
 
         JavaClass request = { env, "io/webfolder/dakota/RequestImpl" };
@@ -434,6 +435,10 @@ public:
         JavaClass klassRequest{ env, "io/webfolder/dakota/RequestImpl" };
         JavaMethod handleMethod{ env, "io/webfolder/dakota/Handler", "handle", "(J)Lio/webfolder/dakota/HandlerStatus;" };
         JavaField statusField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
+        
+        std::random_device dev;
+        std::mt19937 rng(dev());
+        auto random = rng();
 
         auto execute = [&](jobject handler,
                            restinio::request_handle_t req,
@@ -447,7 +452,7 @@ public:
                 delete context;
                 return restinio::request_rejected();
             }
-            jlong id = (jlong)req->connection_id();
+            jlong id = (jlong) (random | (std::uint64_t)context);
             connections.insert(id, context);
             jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod.get(), id);
             if (envCurrentThread->ExceptionCheck()) {
@@ -689,6 +694,16 @@ public:
 #else
             strncpy(dest, (*request)->body().c_str(), (size_t)len);
 #endif
+        }
+    }
+
+    static jlong connectionId(JNIEnv* env, jobject that, jlong id)
+    {
+        Context* context = nullptr;
+        if (connections.find(id, context)) {
+            return (*context->request())->connection_id();
+        } else {
+            return -1;
         }
     }
 

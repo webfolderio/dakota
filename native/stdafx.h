@@ -6,6 +6,8 @@
 #include "HashMap.hpp"
 #include "HashNode.hpp"
 
+#include <random>
+
 #ifdef __GNUG__
 #include <inttypes.h>
 #endif

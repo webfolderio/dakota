@@ -35,6 +35,8 @@ class RequestImpl implements Request {
 
     private native void _content(long id, ByteBuffer buffer);
 
+    private native long _connectionId(long id);
+
     @Override
     public void createResponse(long id, HttpStatus status) {
         _createResponse(id, status.value, status.reasonPhrase);
@@ -105,5 +107,10 @@ class RequestImpl implements Request {
     @Override
     public long length(long id) {
         return _length(id);
+    }
+
+    @Override
+    public long connectionId(long id) {
+        return _connectionId(id);
     }
 }

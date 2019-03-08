@@ -25,4 +25,6 @@ public interface Request {
     int indexedParamSize(long id);
 
     String target(long id);
+
+    long connectionId(long id);
 }
