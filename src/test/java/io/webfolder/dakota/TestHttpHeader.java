@@ -62,7 +62,7 @@ public class TestHttpHeader {
     @Test
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(240, SECONDS).readTimeout(240, SECONDS)
-                .connectTimeout(240, SECONDS).build();
+                .connectTimeout(240, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/foo?foo=bar&abc=123").build();
         client.newCall(req).execute();
         assertNotNull(headerMap);

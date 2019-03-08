@@ -58,7 +58,7 @@ public class TestHttpGet {
     @Test
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
-                .connectTimeout(10, SECONDS).build();
+                .connectTimeout(10, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/foo").build();
         String body = client.newCall(req).execute().body().string();
         assertEquals("hello, world!", body);

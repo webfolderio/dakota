@@ -95,7 +95,7 @@ public class TestMultipleServer {
     @Test
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
-                .connectTimeout(10, SECONDS).build();
+                .connectTimeout(10, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req1 = new okhttp3.Request.Builder().url("http://localhost:" + freePort1 + "/foo").build();
         okhttp3.Response resp1 = client.newCall(req1).execute();
         String body1 = resp1.body().string();

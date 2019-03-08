@@ -62,7 +62,7 @@ public class TestHttpPostByteArray {
     @Test
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(1000, SECONDS).readTimeout(1000, SECONDS)
-                .connectTimeout(1000, SECONDS).build();
+                .connectTimeout(1000, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req = new okhttp3.Request.Builder()
                                 .url("http://localhost:" + freePort + "/foo")
                                 .post(RequestBody.create(MediaType.parse("application/octet-stream"), "hello, world!".getBytes()))

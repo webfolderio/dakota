@@ -59,7 +59,7 @@ public class TestHttpKeepAlive {
     @Test
     public void test() throws IOException {
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
-                .connectTimeout(10, SECONDS).build();
+                .connectTimeout(10, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/foo").build();
         okhttp3.Response resp = client.newCall(req).execute();
         String body = resp.body().string();
