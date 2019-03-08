@@ -29,11 +29,11 @@ public class TestHttpPostByteArray {
 
         Router router = new Router();
 
-        router.post("/foo", id -> {
-            request.createResponse(id, OK);
-            String body = request.body(id);
-            response.body(id, body.getBytes());
-            response.done(id);
+        router.post("/foo", contextId -> {
+            request.createResponse(contextId, OK);
+            String body = request.body(contextId);
+            response.body(contextId, body.getBytes());
+            response.done(contextId);
             return accepted;
         });
 

@@ -8,52 +8,52 @@ import java.nio.ByteOrder;
 
 class ResponseImpl implements Response {
 
-    private long context;
+    private long contextId;
 
     private static final ByteOrder ORDER = nativeOrder();
 
-    private native void _body(long id, String content);
+    private native void _body(long contextId, String content);
 
-    private native void _body(long id, ByteBuffer content);
+    private native void _body(long contextId, ByteBuffer content);
 
-    private native void _done(long id);
+    private native void _done(long contextId);
 
-    private native void _appendHeader(long id, String name, String value);
+    private native void _appendHeader(long contextId, String name, String value);
 
-    private native void _closeConnection(long id);
+    private native void _closeConnection(long contextId);
 
-    private native void _keepAliveConnection(long id);
+    private native void _keepAliveConnection(long contextId);
 
-    private native void _appendHeaderDateField(long id);
+    private native void _appendHeaderDateField(long contextId);
 
     @Override
-    public void body(long id, String content) {
-        _body(id, content);
+    public void body(long contextId, String content) {
+        _body(contextId, content);
     }
 
     @Override
-    public void appendHeader(long id, String name, String value) {
+    public void appendHeader(long contextId, String name, String value) {
         assert name != null;
-        _appendHeader(id, name, value);
+        _appendHeader(contextId, name, value);
     }
 
     @Override
-    public void closeConnection(long id) {
-        _closeConnection(id);
+    public void closeConnection(long contextId) {
+        _closeConnection(contextId);
     }
 
     @Override
-    public void keepAliveConnection(long id) {
-        _keepAliveConnection(id);
+    public void keepAliveConnection(long contextId) {
+        _keepAliveConnection(contextId);
     }
 
     @Override
-    public void appendHeaderDateField(long id) {
-        _appendHeaderDateField(id);
+    public void appendHeaderDateField(long contextId) {
+        _appendHeaderDateField(contextId);
     }
 
     @Override
-    public void body(long id, ByteBuffer content) {
+    public void body(long contextId, ByteBuffer content) {
         assert content != null;
         if (!content.isDirect()) {
             throw new IllegalArgumentException();
@@ -61,19 +61,19 @@ class ResponseImpl implements Response {
         if (!content.order().equals(ORDER)) {
             throw new IllegalArgumentException();
         }
-        _body(id, content);
+        _body(contextId, content);
     }
 
     @Override
-    public void body(long id, byte[] content) {
+    public void body(long contextId, byte[] content) {
         assert content != null;
         ByteBuffer buffer = allocateDirect(content.length)
                                 .order(ORDER)
                             .put(content);
-        _body(id, buffer);
+        _body(contextId, buffer);
     }
 
-    public void done(long id) {
-        _done(id);
+    public void done(long contextId) {
+        _done(contextId);
     }
 }

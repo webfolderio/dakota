@@ -31,10 +31,10 @@ public class TestHttpHeader {
 
         Router router = new Router();
 
-        router.get("/foo", id -> {
-            request.createResponse(id, OK);
-            headerMap = request.header(id);
-            response.done(id);
+        router.get("/foo", contextId -> {
+            request.createResponse(contextId, OK);
+            headerMap = request.header(contextId);
+            response.done(contextId);
             return accepted;
         });
 

@@ -12,9 +12,9 @@ public class NotFoundHandler implements Handler {
     }
 
     @Override
-    public HandlerStatus handle(long id) {
-        server.getRequest().createResponse(id, NotFound);
-        server.getResponse().done(id);
+    public HandlerStatus handle(long contextId) {
+        server.getRequest().createResponse(contextId, NotFound);
+        server.getResponse().done(contextId);
         return accepted;
     }
 }

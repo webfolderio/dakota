@@ -29,11 +29,11 @@ public class TestAsyncHttpGet {
 
         Router router = new Router();
 
-        router.get("/foo", id -> {
+        router.get("/foo", contextId -> {
             new Thread(() -> {
-                request.createResponse(id, OK);
-                response.body(id, "hello, world!");
-                response.done(id);
+                request.createResponse(contextId, OK);
+                response.body(contextId, "hello, world!");
+                response.done(contextId);
             }).start();
             return accepted;
         });

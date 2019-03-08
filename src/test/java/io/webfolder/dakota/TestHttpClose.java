@@ -27,11 +27,11 @@ public class TestHttpClose {
 
         Router router = new Router();
 
-        router.get("/foo", id -> {
-            request.createResponse(id, OK);
-            response.body(id, "hello, world!");
-            response.closeConnection(id);
-            response.done(id);
+        router.get("/foo", contextId -> {
+            request.createResponse(contextId, OK);
+            response.body(contextId, "hello, world!");
+            response.closeConnection(contextId);
+            response.done(contextId);
             return accepted;
         });
 

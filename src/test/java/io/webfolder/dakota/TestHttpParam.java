@@ -33,14 +33,14 @@ public class TestHttpParam {
 
         Router router = new Router();
 
-        router.get("/foo/:bar(\\d{2})", id -> {
-            request.createResponse(id, OK);
-            String bar = request.param(id, "bar");
+        router.get("/foo/:bar(\\d{2})", contextId -> {
+            request.createResponse(contextId, OK);
+            String bar = request.param(contextId, "bar");
             this.bar = bar;
-            this.nps = request.namedParamSize(id);
-            this.ips = request.indexedParamSize(id);
-            response.body(id, "hello, world!");
-            response.done(id);
+            this.nps = request.namedParamSize(contextId);
+            this.ips = request.indexedParamSize(contextId);
+            response.body(contextId, "hello, world!");
+            response.done(contextId);
             return accepted;
         });
 

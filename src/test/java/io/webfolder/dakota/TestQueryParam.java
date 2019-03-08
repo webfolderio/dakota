@@ -31,10 +31,10 @@ public class TestQueryParam {
 
         Router router = new Router();
 
-        router.get("/foo", id -> {
-            request.createResponse(id, OK);
-            queryMap = request.query(id);
-            response.done(id);
+        router.get("/foo", contextId -> {
+            request.createResponse(contextId, OK);
+            queryMap = request.query(contextId);
+            response.done(contextId);
             return accepted;
         });
 

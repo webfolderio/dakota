@@ -33,11 +33,11 @@ public class TestMultipleServer {
 
         Router router1 = new Router();
 
-        router1.get("/foo", id -> {
-            request1.createResponse(id, OK);
-            response1.body(id, "server1");
-            response1.done(id);
-            id1 = request1.connectionId(id);
+        router1.get("/foo", contextId -> {
+            request1.createResponse(contextId, OK);
+            response1.body(contextId, "server1");
+            response1.done(contextId);
+            id1 = request1.connectionId(contextId);
             return accepted;
         });
 

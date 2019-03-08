@@ -13,38 +13,38 @@ class RequestImpl implements Request {
 
     private static final ByteOrder ORDER = nativeOrder();
 
-    private native void _createResponse(long id, int status, String reasonPhrase);
+    private native void _createResponse(long contextId, int status, String reasonPhrase);
 
-    private native Map<String, String> _query(long id);
+    private native Map<String, String> _query(long contextId);
 
-    private native Map<String, String> _header(long id);
+    private native Map<String, String> _header(long contextId);
 
-    private native String _target(long id);
+    private native String _target(long contextId);
 
-    private native String _param(long id, String name);
+    private native String _param(long contextId, String name);
 
-    private native String _param(long id, int index);
+    private native String _param(long contextId, int index);
 
-    private native int _namedParamSize(long id);
+    private native int _namedParamSize(long contextId);
 
-    private native int _indexedParamSize(long id);
+    private native int _indexedParamSize(long contextId);
 
-    private native String _body(long id);
+    private native String _body(long contextId);
 
-    private native long _length(long id);
+    private native long _length(long contextId);
 
-    private native void _content(long id, ByteBuffer buffer);
+    private native void _content(long contextId, ByteBuffer buffer);
 
-    private native long _connectionId(long id);
+    private native long _connectionId(long contextId);
 
     @Override
-    public void createResponse(long id, HttpStatus status) {
-        _createResponse(id, status.value, status.reasonPhrase);
+    public void createResponse(long contextId, HttpStatus status) {
+        _createResponse(contextId, status.value, status.reasonPhrase);
     }
 
     @Override
-    public Map<String, String> query(long id) {
-        Map<String, String> map = _query(id);
+    public Map<String, String> query(long contextId) {
+        Map<String, String> map = _query(contextId);
         if (map == null) {
             return emptyMap();
         }
@@ -52,8 +52,8 @@ class RequestImpl implements Request {
     }
 
     @Override
-    public Map<String, String> header(long id) {
-        Map<String, String> map = _header(id);
+    public Map<String, String> header(long contextId) {
+        Map<String, String> map = _header(contextId);
         if (map == null) {
             return emptyMap();
         }
@@ -61,56 +61,56 @@ class RequestImpl implements Request {
     }
 
     @Override
-    public String target(long id) {
-        return _target(id);
+    public String target(long contextId) {
+        return _target(contextId);
     }
 
     @Override
-    public String param(long id, String name) {
-        return _param(id, name);
+    public String param(long contextId, String name) {
+        return _param(contextId, name);
     }
 
     @Override
-    public String param(long id, int index) {
-        return _param(id, index);
+    public String param(long contextId, int index) {
+        return _param(contextId, index);
     }
 
     @Override
-    public int namedParamSize(long id) {
-        return _namedParamSize(id);
+    public int namedParamSize(long contextId) {
+        return _namedParamSize(contextId);
     }
 
     @Override
-    public int indexedParamSize(long id) {
-        return _indexedParamSize(id);
+    public int indexedParamSize(long contextId) {
+        return _indexedParamSize(contextId);
     }
 
     @Override
-    public String body(long id) {
-        return _body(id);
+    public String body(long contextId) {
+        return _body(contextId);
     }
 
     @Override
-    public byte[] content(long id) {
-        long length = length(id);
+    public byte[] content(long contextId) {
+        long length = length(contextId);
         if (length > MAX_VALUE) {
             throw new RuntimeException();
         }
         ByteBuffer buffer = allocateDirect((int) length)
                                 .order(ORDER);
-        _content(id, buffer);
+        _content(contextId, buffer);
         byte[] content = new byte[buffer.remaining()];
         buffer.get(content);
         return content;
     }
 
     @Override
-    public long length(long id) {
-        return _length(id);
+    public long length(long contextId) {
+        return _length(contextId);
     }
 
     @Override
-    public long connectionId(long id) {
-        return _connectionId(id);
+    public long connectionId(long contextId) {
+        return _connectionId(contextId);
     }
 }

@@ -452,11 +452,11 @@ public:
                 delete context;
                 return restinio::request_rejected();
             }
-            jlong id = (jlong) (random | (std::uint64_t)context);
-            connections.insert(id, context);
-            jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod.get(), id);
+            jlong contextId = (jlong) (random | (std::uint64_t)context);
+            connections.insert(contextId, context);
+            jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod.get(), contextId);
             if (envCurrentThread->ExceptionCheck()) {
-                connections.erase(id);
+                connections.erase(contextId);
                 delete context;
                 return restinio::request_rejected();
             }
@@ -543,10 +543,10 @@ public:
         }
     }
 
-    static void createResponse(JNIEnv* env, jobject that, jlong id, jint status, jstring reasonPhrase)
+    static void createResponse(JNIEnv* env, jobject that, jlong contextId, jint status, jstring reasonPhrase)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             restinio::request_handle_t* request = context->request();
             String str{ env, reasonPhrase };
             restinio::http_status_line_t status_line = restinio::http_status_line_t{ restinio::http_status_code_t{ (uint16_t)status }, str.c_str() };
@@ -556,10 +556,10 @@ public:
         }
     }
 
-    static jobject query(JNIEnv* env, jobject that, jlong id)
+    static jobject query(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             restinio::request_handle_t* request = context->request();
             const auto qp = restinio::parse_query((*request)->header().query());
             if (qp.empty()) {
@@ -582,10 +582,10 @@ public:
         }
     }
 
-    static jobject header(JNIEnv* env, jobject that, jlong id)
+    static jobject header(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             auto* request = context->request();
             JavaClass kMap{ env, "java/util/LinkedHashMap" };
             JavaMethod cMap{ env, "java/util/LinkedHashMap", "<init>", "(I)V" };
@@ -605,10 +605,10 @@ public:
         }
     }
 
-    static jstring target(JNIEnv* env, jobject that, jlong id)
+    static jstring target(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             auto request = context->request();
             auto target = restinio::cast_to<std::string>((*request)->header().request_target());
             return env->NewStringUTF(target.c_str());
@@ -617,10 +617,10 @@ public:
         }
     }
 
-    static jstring getParamByName(JNIEnv* env, jobject that, jlong id, jstring name)
+    static jstring getParamByName(JNIEnv* env, jobject that, jlong contextId, jstring name)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             String param{ env, name };
             jstring value = context->param(env, param.c_str());
             return value;
@@ -629,10 +629,10 @@ public:
         }
     }
 
-    static jstring getParamByIndex(JNIEnv* env, jobject that, jlong id, jint index)
+    static jstring getParamByIndex(JNIEnv* env, jobject that, jlong contextId, jint index)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             jstring value = context->param(env, index);
             return value;
         } else {
@@ -640,30 +640,30 @@ public:
         }
     }
 
-    static jint namedParamSize(JNIEnv* env, jobject that, jlong id)
+    static jint namedParamSize(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             return context->namedParamSize();
         } else {
             return -1;
         }
     }
 
-    static jint indexedParamSize(JNIEnv* env, jobject that, jlong id)
+    static jint indexedParamSize(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             return context->indexedParamSize();
         } else {
             return -1;
         }
     }
 
-    static jstring getBody(JNIEnv* env, jobject that, jlong id)
+    static jstring getBody(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             auto* request = context->request();
             return env->NewStringUTF((*request)->body().c_str());
         } else {
@@ -671,10 +671,10 @@ public:
         }
     }
 
-    static jlong length(JNIEnv* env, jobject that, jlong id)
+    static jlong length(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             auto* request = context->request();
             return (jlong)(*request)->body().length();
         } else {
@@ -682,10 +682,10 @@ public:
         }
     }
 
-    static void getContent(JNIEnv* env, jobject that, jlong id, jobject buffer)
+    static void getContent(JNIEnv* env, jobject that, jlong contextId, jobject buffer)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             auto* request = context->request();
             jlong len = env->GetDirectBufferCapacity(buffer) + 1;
             char* dest = (char*)env->GetDirectBufferAddress(buffer);
@@ -697,29 +697,29 @@ public:
         }
     }
 
-    static jlong connectionId(JNIEnv* env, jobject that, jlong id)
+    static jlong connectionId(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             return (*context->request())->connection_id();
         } else {
             return -1;
         }
     }
 
-    static void setBody(JNIEnv* env, jobject that, jlong id, jstring body)
+    static void setBody(JNIEnv* env, jobject that, jlong contextId, jstring body)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             String str{ env, body };
             context->response()->set_body(str.c_str());
         }
     }
 
-    static void setBodyByteBuffer(JNIEnv* env, jobject that, jlong id, jobject body)
+    static void setBodyByteBuffer(JNIEnv* env, jobject that, jlong contextId, jobject body)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             if (body) {
                 std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
                 const char* buffer = (const char*)env->GetDirectBufferAddress(body);
@@ -728,47 +728,47 @@ public:
         }
     }
 
-    static void done(JNIEnv* env, jobject that, jlong id)
+    static void done(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
-            context->response()->done([id, context](const auto& ec) {
-                connections.erase(id);
+        if (connections.find(contextId, context)) {
+            context->response()->done([contextId, context](const auto& ec) {
+                connections.erase(contextId);
                 delete context;
             });
         }
     }
 
-    static void appendHeader(JNIEnv* env, jobject that, jlong id, jstring name, jstring value)
+    static void appendHeader(JNIEnv* env, jobject that, jlong contextId, jstring name, jstring value)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             String s_name{ env, name };
             String s_value{ env, value };
             context->response()->append_header(s_name.c_str(), s_value.c_str());
         }
     }
 
-    static void closeConnection(JNIEnv* env, jobject that, jlong id)
+    static void closeConnection(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             context->response()->connection_close();
         }
     }
 
-    static void keepAliveConnection(JNIEnv* env, jobject that, jlong id)
+    static void keepAliveConnection(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             context->response()->connection_keep_alive();
         }
     }
 
-    static void appendHeaderDateField(JNIEnv* env, jobject that, jlong id)
+    static void appendHeaderDateField(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
-        if (connections.find(id, context)) {
+        if (connections.find(contextId, context)) {
             context->response()->append_header_date_field();
         }
     }

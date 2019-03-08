@@ -4,27 +4,27 @@ import java.util.Map;
 
 public interface Request {
 
-    void createResponse(long id, HttpStatus status);
+    void createResponse(long contextId, HttpStatus status);
 
-    String body(long id);
+    String body(long contextId);
     
-    byte[] content(long id);
+    byte[] content(long contextId);
 
-    long length(long id);
+    long length(long contextId);
 
-    Map<String, String> query(long id);
+    Map<String, String> query(long contextId);
 
-    Map<String, String> header(long id);
+    Map<String, String> header(long contextId);
 
-    String param(long id, String name);
+    String param(long contextId, String name);
 
-    String param(long id, int index);
+    String param(long contextId, int index);
 
-    int namedParamSize(long id);
+    int namedParamSize(long contextId);
 
-    int indexedParamSize(long id);
+    int indexedParamSize(long contextId);
 
-    String target(long id);
+    String target(long contextId);
 
-    long connectionId(long id);
+    long connectionId(long contextId);
 }

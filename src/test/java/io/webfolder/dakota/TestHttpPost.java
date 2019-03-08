@@ -33,13 +33,13 @@ public class TestHttpPost {
 
         Router router = new Router();
 
-        router.post("/foo", id -> {
-            request.createResponse(id, OK);
-            String body = request.body(id);
-            length = request.length(id);
-            content = request.content(id);
-            response.body(id, body);
-            response.done(id);
+        router.post("/foo", contextId -> {
+            request.createResponse(contextId, OK);
+            String body = request.body(contextId);
+            length = request.length(contextId);
+            content = request.content(contextId);
+            response.body(contextId, body);
+            response.done(contextId);
             return accepted;
         });
 

@@ -1,8 +1,5 @@
 language: cpp
 
-jdk:
-  - oraclejdk11
-
 matrix:
   include:
     - os: linux
