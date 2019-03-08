@@ -382,13 +382,14 @@ struct Restinio {
             "_query", "(J)Ljava/util/Map;", (void*)&Restinio::query,
             "_header", "(J)Ljava/util/Map;", (void*)&Restinio::header,
             "_target", "(J)Ljava/lang/String;", (void*)&Restinio::target,
-            "_param", "(JLjava/lang/String;)Ljava/lang/String;", (void*)&Restinio::getParamByName,
+            "_param", "(JLjava/lang/String;)Ljava/lang/String;", (void*)&Restinio::paramByName,
             "_param", "(JI)Ljava/lang/String;", (void*)&Restinio::getParamByIndex,
             "_namedParamSize", "(J)I", (void*)&Restinio::namedParamSize,
             "_indexedParamSize", "(J)I", (void*)&Restinio::indexedParamSize,
-            "_body", "(J)Ljava/lang/String;", (void*)&Restinio::getBody,
+            "_body", "(J)Ljava/lang/String;", (void*)&Restinio::body,
             "_length", "(J)J", (void*)&Restinio::length,
-            "_content", "(JLjava/nio/ByteBuffer;)V", (void*)&Restinio::getContent,
+            "_bodyAsByteArray", "(J)[B", (void*)&Restinio::bodyAsByteArray,
+            "_bodyAsByteBuffer", "(JLjava/nio/ByteBuffer;)V", (void*)&Restinio::bodyAsByteBuffer,
             "_connectionId", "(J)J", (void*)&Restinio::connectionId
         };
 
@@ -399,6 +400,7 @@ struct Restinio {
             "_done", "(J)V", (void*)&Restinio::done,
             "_body", "(JLjava/lang/String;)V", (void*)&Restinio::setBody,
             "_body", "(JLjava/nio/ByteBuffer;)V", (void*)&Restinio::setBodyByteBuffer,
+            "_body", "(J[B)V", (void*)&Restinio::setBodyByteArray,
             "_appendHeader", "(JLjava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader,
             "_closeConnection", "(J)V", (void*)&Restinio::closeConnection,
             "_keepAliveConnection", "(J)V", (void*)&Restinio::keepAliveConnection,
@@ -435,7 +437,7 @@ public:
         JavaClass klassRequest{ env, "io/webfolder/dakota/RequestImpl" };
         JavaMethod handleMethod{ env, "io/webfolder/dakota/Handler", "handle", "(J)Lio/webfolder/dakota/HandlerStatus;" };
         JavaField statusField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
-        
+
         std::random_device dev;
         std::mt19937 rng(dev());
         auto random = rng();
@@ -452,7 +454,7 @@ public:
                 delete context;
                 return restinio::request_rejected();
             }
-            jlong contextId = (jlong) (random | (std::uint64_t)context);
+            jlong contextId = (jlong)(random | (std::uint64_t)context);
             connections.insert(contextId, context);
             jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod.get(), contextId);
             if (envCurrentThread->ExceptionCheck()) {
@@ -617,7 +619,7 @@ public:
         }
     }
 
-    static jstring getParamByName(JNIEnv* env, jobject that, jlong contextId, jstring name)
+    static jstring paramByName(JNIEnv* env, jobject that, jlong contextId, jstring name)
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
@@ -660,7 +662,7 @@ public:
         }
     }
 
-    static jstring getBody(JNIEnv* env, jobject that, jlong contextId)
+    static jstring body(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
@@ -682,7 +684,28 @@ public:
         }
     }
 
-    static void getContent(JNIEnv* env, jobject that, jlong contextId, jobject buffer)
+    static jbyteArray bodyAsByteArray(JNIEnv* env, jobject that, jlong contextId)
+    {
+        Context* context = nullptr;
+        if (connections.find(contextId, context)) {
+            auto* request = context->request();
+            size_t len = (*request)->body().length();
+            if (len < INT_MAX) {
+                jbyteArray arr = env->NewByteArray((jsize) len);
+                env->SetByteArrayRegion(arr, 0, (jsize) len, (jbyte*)(*request)->body().c_str());
+                return arr;
+            } else {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
+                env->ThrowNew(exceptionClass.get(),
+                    fmt::format("Request body is too big to fit byte array. Request size: {}", len).c_str());
+                return nullptr;
+            }
+        } else {
+            return nullptr;
+        }
+    }
+
+    static void bodyAsByteBuffer(JNIEnv* env, jobject that, jlong contextId, jobject buffer)
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
@@ -719,12 +742,20 @@ public:
     static void setBodyByteBuffer(JNIEnv* env, jobject that, jlong contextId, jobject body)
     {
         Context* context = nullptr;
-        if (connections.find(contextId, context)) {
-            if (body) {
-                std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
-                const char* buffer = (const char*)env->GetDirectBufferAddress(body);
-                context->response()->set_body(restinio::const_buffer(buffer, len));
-            }
+        if (body && connections.find(contextId, context)) {
+            std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
+            const char* buffer = (const char*)env->GetDirectBufferAddress(body);
+            context->response()->set_body(restinio::const_buffer(buffer, len));
+        }
+    }
+
+    static void setBodyByteArray(JNIEnv* env, jobject that, jlong contextId, jbyteArray body)
+    {
+        Context* context = nullptr;
+        if (body && connections.find(contextId, context)) {
+            char* content = (char*) env->GetByteArrayElements(body, nullptr);
+            jsize size = env->GetArrayLength(body);
+            context->response()->set_body(restinio::const_buffer(content, size));
         }
     }
 

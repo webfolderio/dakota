@@ -1,5 +1,6 @@
 package io.webfolder.dakota;
 
+import java.nio.ByteBuffer;
 import java.util.Map;
 
 public interface Request {
@@ -8,7 +9,9 @@ public interface Request {
 
     String body(long contextId);
     
-    byte[] content(long contextId);
+    byte[] bodyAsByteArray(long contextId);
+
+    ByteBuffer bodyAsByteBuffer(long contextId);
 
     long length(long contextId);
 

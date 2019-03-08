@@ -2,10 +2,13 @@ package io.webfolder.dakota;
 
 import static io.webfolder.dakota.HandlerStatus.accepted;
 import static io.webfolder.dakota.HttpStatus.OK;
+import static java.nio.ByteBuffer.allocateDirect;
+import static java.nio.ByteOrder.nativeOrder;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 import org.junit.After;
 import org.junit.Before;
@@ -16,13 +19,9 @@ import okhttp3.OkHttpClient;
 import okhttp3.OkHttpClient.Builder;
 import okhttp3.RequestBody;
 
-public class TestHttpPost {
+public class TestHttpPostByteBuffer {
 
     private WebServer server;
-
-    private long length;
-
-    private byte[] content;
 
     @Before
     public void init() {
@@ -35,10 +34,13 @@ public class TestHttpPost {
 
         router.post("/foo", contextId -> {
             request.createResponse(contextId, OK);
-            String body = request.body(contextId);
-            length = request.length(contextId);
-            content = request.bodyAsByteArray(contextId);
-            response.body(contextId, body);
+            ByteBuffer requestBuffer = request.bodyAsByteBuffer(contextId);
+            byte[] content = new byte[requestBuffer.remaining()];
+            requestBuffer.get(content);
+            String body = new String(content);
+            ByteBuffer responseBuffer = allocateDirect(body.length()).order(nativeOrder());
+            responseBuffer.put(body.getBytes());
+            response.body(contextId, responseBuffer);
             response.done(contextId);
             return accepted;
         });
@@ -59,11 +61,9 @@ public class TestHttpPost {
                 .connectTimeout(10, SECONDS).build();
         okhttp3.Request req = new okhttp3.Request.Builder()
                                 .url("http://localhost:8080/foo")
-                                .post(RequestBody.create(MediaType.parse("plain/text"), "hello"))
+                                .post(RequestBody.create(MediaType.parse("application/octet-stream"), "hello, world!".getBytes()))
                             .build();
         String body = client.newCall(req).execute().body().string();
-        assertEquals("hello", body);
-        assertEquals("hello".length(), length);
-        assertEquals("hello", new String(content));
+        assertEquals("hello, world!", body);
     }
 }

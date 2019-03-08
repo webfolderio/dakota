@@ -2,8 +2,9 @@ package io.webfolder.dakota;
 
 import static java.lang.Integer.MAX_VALUE;
 import static java.nio.ByteBuffer.allocateDirect;
-import static java.nio.ByteOrder.nativeOrder;
 import static java.util.Collections.emptyMap;
+
+import static java.nio.ByteOrder.*;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -33,7 +34,9 @@ class RequestImpl implements Request {
 
     private native long _length(long contextId);
 
-    private native void _content(long contextId, ByteBuffer buffer);
+    private native byte[] _bodyAsByteArray(long contextId);
+
+    private native void _bodyAsByteBuffer(long context, ByteBuffer buffer);
 
     private native long _connectionId(long contextId);
 
@@ -91,17 +94,21 @@ class RequestImpl implements Request {
     }
 
     @Override
-    public byte[] content(long contextId) {
+    public byte[] bodyAsByteArray(long contextId) {
+        byte[] content = _bodyAsByteArray(contextId);
+        return content;
+    }
+
+    @Override
+    public ByteBuffer bodyAsByteBuffer(long contextId) {
         long length = length(contextId);
         if (length > MAX_VALUE) {
-            throw new RuntimeException();
+            throw new DakotaException("Request body is too big to fit byte array. Request size: " + length);
         }
         ByteBuffer buffer = allocateDirect((int) length)
                                 .order(ORDER);
-        _content(contextId, buffer);
-        byte[] content = new byte[buffer.remaining()];
-        buffer.get(content);
-        return content;
+        _bodyAsByteBuffer(contextId, buffer);
+        return buffer;
     }
 
     @Override
