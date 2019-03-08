@@ -275,13 +275,11 @@ public:
 
 class Context {
 private:
-    restinio::request_handle_t* req_;
-    restinio::response_builder_t<restinio::restinio_controlled_output_t>* res_;
-    restinio::router::route_params_t* params_;
-    jbyte* responseBuffer_;
-    jint releaseMode_;
-    jbyteArray body_;
-    bool releaseBuffer_ = false;
+    restinio::request_handle_t* req_ = nullptr;
+    restinio::response_builder_t<restinio::restinio_controlled_output_t>* res_ = nullptr;
+    restinio::router::route_params_t* params_ = nullptr;
+    jbyte* responseNativeArray_ = nullptr;
+    jbyteArray responseArray_ = nullptr;
 
 public:
     Context(const Context&) = delete;
@@ -308,34 +306,21 @@ public:
     {
         return res_;
     }
-    void setResponseBuffer(jbyte* buffer)
+    void setResponseNativeArray(jbyte* buffer)
     {
-        responseBuffer_ = buffer;
-        releaseBuffer_ = true;
+        responseNativeArray_ = buffer;
     }
-    void setResponseBody(jbyteArray body)
+    void setResponseArray(jbyteArray buffer)
     {
-        body_ = body;
+        responseArray_ = buffer;
     }
-    void setReleaseMode(jint mode)
+    jbyte* getResponseNativeArray() const
     {
-        releaseMode_ = mode;
+        return responseNativeArray_;
     }
-    bool releaseBuffer() const
+    jbyteArray getResponseArray() const
     {
-        return releaseBuffer_;
-    }
-    jbyte* getResponseBuffer() const
-    {
-        return responseBuffer_;
-    }
-    jbyteArray getBody() const
-    {
-        return body_;
-    }
-    jint getReleaseMode() const
-    {
-        return releaseMode_;
+        return responseArray_;
     }
     void setResponse(restinio::response_builder_t<restinio::restinio_controlled_output_t>* response)
     {
@@ -786,18 +771,12 @@ public:
     {
         Context* context = nullptr;
         if (body && connections.find(contextId, context)) {
-            jboolean isCopy;
-            jbyte* buffer = env->GetByteArrayElements(body, &isCopy);
+            jbyte* buffer = env->GetByteArrayElements(body, nullptr);
             if (buffer) {
                 jsize size = env->GetArrayLength(body);
-                context->setResponseBuffer(buffer);
-                context->setResponseBody((jbyteArray) env->NewGlobalRef(body));
-                context->response()->set_body(restinio::const_buffer((const char*)context->getResponseBuffer(), size));
-                if (isCopy) {
-                    context->setReleaseMode(0);
-                } else {
-                    context->setReleaseMode(JNI_ABORT);
-                }
+                context->setResponseNativeArray(buffer);
+                context->setResponseArray((jbyteArray) env->NewGlobalRef(body));
+                context->response()->set_body(restinio::const_buffer((const char*)context->getResponseNativeArray(), size));
             } else {
                 JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
                 env->ThrowNew(exceptionClass.get(), "Can't allocate memory.");
@@ -809,9 +788,9 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            if (context->releaseBuffer()) {
-                env->ReleaseByteArrayElements(context->getBody(), context->getResponseBuffer(), context->getReleaseMode());
-                env->DeleteGlobalRef(context->getBody());
+            if (context->getResponseNativeArray()) {
+                env->ReleaseByteArrayElements(context->getResponseArray(), context->getResponseNativeArray(), 0);
+                env->DeleteGlobalRef(context->getResponseArray());
             }
             context->response()->done([contextId, context](const auto& ec) {
                 connections.erase(contextId);
