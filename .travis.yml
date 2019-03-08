@@ -1,5 +1,8 @@
 language: cpp
 
+jdk:
+  - oraclejdk11
+
 matrix:
   include:
     - os: linux
@@ -25,6 +28,7 @@ install:
   - cd ..
 
 script:
+  - java -version
   - cd native
   - mkdir build
   - cd build
