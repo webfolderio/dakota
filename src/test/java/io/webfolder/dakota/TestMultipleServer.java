@@ -49,8 +49,8 @@ public class TestMultipleServer {
         router1.get("/foo", contextId -> {
             request1.createResponse(contextId, OK);
             response1.body(contextId, "server1");
-            response1.done(contextId);
             id1 = request1.connectionId(contextId);
+            response1.done(contextId);
             return accepted;
         });
 
@@ -74,8 +74,8 @@ public class TestMultipleServer {
         router2.get("/foo", id -> {
             request2.createResponse(id, OK);
             response2.body(id, "server2");
-            response2.done(id);
             id2 = request2.connectionId(id);
+            response2.done(id);
             return accepted;
         });
 
