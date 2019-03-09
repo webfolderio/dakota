@@ -2,6 +2,7 @@ package io.webfolder.dakota;
 
 import static java.nio.ByteOrder.nativeOrder;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
@@ -16,6 +17,8 @@ class ResponseImpl implements Response {
     private native void _body(long contextId, ByteBuffer content);
 
     private native void _body(long contextId, byte[] content);
+
+    private native void _sendfile(long contextId, String path);
 
     private native void _done(long contextId);
 
@@ -69,6 +72,12 @@ class ResponseImpl implements Response {
     public void body(long contextId, byte[] content) {
         assert content != null;
         _body(contextId, content);
+    }
+
+
+    @Override
+    public void body(long contextId, File file) {
+        _sendfile(contextId, file.getAbsolutePath());
     }
 
     public void done(long contextId) {

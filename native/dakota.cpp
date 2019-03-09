@@ -439,6 +439,7 @@ struct Restinio {
             "_body", "(JLjava/lang/String;)V", (void*)&Restinio::setBody,
             "_body", "(JLjava/nio/ByteBuffer;)V", (void*)&Restinio::setBodyByteBuffer,
             "_body", "(J[B)V", (void*)&Restinio::setBodyByteArray,
+            "_sendfile", "(JLjava/lang/String;)V", (void*)&Restinio::sendFile,
             "_appendHeader", "(JLjava/lang/String;Ljava/lang/String;)V", (void*)&Restinio::appendHeader,
             "_closeConnection", "(J)V", (void*)&Restinio::closeConnection,
             "_keepAliveConnection", "(J)V", (void*)&Restinio::keepAliveConnection,
@@ -811,23 +812,31 @@ public:
         }
     }
 
+    static void sendFile(JNIEnv* env, jobject that, jlong contextId, jstring path)
+    {
+        Context* context = nullptr;
+        if (connections.find(contextId, context)) {
+            String str{ env, path };
+            context->response()->set_body(restinio::sendfile(str.c_str()));
+        }
+    }
+
     static void done(JNIEnv* env, jobject that, jlong contextId)
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
             context->response()->done([contextId, context](const auto& ec) {
-                auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
-                if (envCurrentThread) {
-                    if (context->getResponseNativeArray()) {
-                        envCurrentThread->ReleaseByteArrayElements(
-                            context->getResponseArray(),
-                            context->getResponseNativeArray(),
-                            context->getReleaseMode());
-                        envCurrentThread->DeleteGlobalRef(context->getResponseArray());
-                    }
-                    if (context->getResponseDirectBuffer()) {
-                        envCurrentThread->DeleteGlobalRef(context->getResponseDirectBuffer());
-                    }
+                if (context->getResponseNativeArray()) {
+                    auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
+                    envCurrentThread->ReleaseByteArrayElements(
+                        context->getResponseArray(),
+                        context->getResponseNativeArray(),
+                        context->getReleaseMode());
+                    envCurrentThread->DeleteGlobalRef(context->getResponseArray());
+                }
+                if (context->getResponseDirectBuffer()) {
+                    auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
+                    envCurrentThread->DeleteGlobalRef(context->getResponseDirectBuffer());
                 }
                 connections.erase(contextId);
                 delete context;
