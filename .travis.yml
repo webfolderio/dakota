@@ -12,7 +12,7 @@ script:
   - cd native
   - mkdir build
   - cd build
-  - cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/travis/build/webfolderio/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
+  - cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/travis/build/webfolderio/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-osx
   - cmake .. -DCMAKE_BUILD_TYPE=Release
   - make
   - cp libdakota.dylib ../../src/main/resources/META-INF
