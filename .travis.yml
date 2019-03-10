@@ -6,16 +6,25 @@ matrix:
 cache:
   directories:
   - $HOME/.m2
+  - $HOME/vcpkg-cache
 
 install:
-  - brew install gcc@8
-  - git clone https://github.com/Microsoft/vcpkg.git
-  - cd vcpkg
-  - CC=gcc-8 CXX=g++-8 ./bootstrap-vcpkg.sh
-  - ./vcpkg integrate install
-  - ./vcpkg install restinio:x64-osx
+-|
+  if [ ! -d "$HOME/vcpkg-cache" ]; then
+   brew install gcc@8
+ fi
+ git clone https://github.com/Microsoft/vcpkg.git
+ cd vcpkg
+ if [ -d "$HOME/vcpkg-cache" ]; then
+   cp $HOME/vcpkg-cache/vcpkg .
+ else
+   CC=gcc-8 CXX=g++-8 ./bootstrap-vcpkg.sh
+   ./vcpkg integrate install
+  fi
+  ./vcpkg install restinio:x64-osx
 
 script:
+  - cd $HOME && pwd
   - java -version
   - cd native
   - mkdir build
