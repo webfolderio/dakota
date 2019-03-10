@@ -12,10 +12,7 @@ jobs:
       - checkout
 
       - run: apt-get update -qq
-      - run: apt-get install -y software-properties-common      
-      - run: apt-get install -y git
-      - run: apt-get install -y curl
-      - run: apt-get install -y default-jdk
+      - run: apt-get install -y software-properties-common git default-jdk curl unzip zip
 
       - run:
           name: install vcpkg
