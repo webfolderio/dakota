@@ -11,9 +11,11 @@ jobs:
 
       - checkout
 
+      - run: sudo apt-get install curl unzip tar
+
       - run:
           name: install vcpkg
-          command: |
+          command: |            
             git clone https://github.com/Microsoft/vcpkg.git
             ./vcpkg/bootstrap-vcpkg.sh
             ./vcpkg/vcpkg integrate install
