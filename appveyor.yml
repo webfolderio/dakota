@@ -10,7 +10,7 @@ build_script:
   - sh: ./vcpkg/vcpkg integrate install
   - sh: ./vcpkg/vcpkg install restinio:x64-linux
   - sh: cd $APPVEYOR_BUILD_FOLDER/native && mkdir build
-  - sh: cd $APPVEYOR_BUILD_FOLDER/native/build && CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_TOOLCHAIN_FILE=$APPVEYOR_BUILD_FOLDER/../vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
+  - sh: cd $APPVEYOR_BUILD_FOLDER/native/build && CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/appveyor/projects/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
   - sh: cd $APPVEYOR_BUILD_FOLDER/native/build && cmake .. -DCMAKE_BUILD_TYPE=Release
   - sh: cd $APPVEYOR_BUILD_FOLDER/native/build && make
   - sh: strip $APPVEYOR_BUILD_FOLDER/native/build/libdakota.so
