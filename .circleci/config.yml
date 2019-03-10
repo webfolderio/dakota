@@ -18,7 +18,7 @@ jobs:
           name: install vcpkg
           command: |            
             git clone https://github.com/Microsoft/vcpkg.git
-            CC=gcc-8 CXX=g++-8 ./vcpkg/bootstrap-vcpkg.sh
+            CC=gcc-7 CXX=g++-7 ./vcpkg/bootstrap-vcpkg.sh
             ./vcpkg/vcpkg integrate install
             ./vcpkg/vcpkg install restinio:x64-linux
             cd native
