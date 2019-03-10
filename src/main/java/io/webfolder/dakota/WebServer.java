@@ -44,7 +44,11 @@ public class WebServer {
     // ------------------------------------------------------------------------
     // private native methods
     // ------------------------------------------------------------------------
-    private native void _run(Settings settings, Object[][] routes, Handler nonMatchedHandler);
+    private native void _run(Settings settings,
+                                Object[][] routes,
+                                Handler nonMatchedHandler,
+                                Request request,
+                                Response response);
 
     private native void _stop();
 
@@ -57,11 +61,11 @@ public class WebServer {
     }
 
     public void run(Router router) {
-        _run(settings, router.getRoutes(), null);
+        _run(settings, router.getRoutes(), null, request, response);
     }
 
     public void run(Router router, Handler nonMatchedHandler) {
-        _run(settings, router.getRoutes(), nonMatchedHandler);
+        _run(settings, router.getRoutes(), nonMatchedHandler, request, response);
     }
 
     public Settings getSettings() {
@@ -72,11 +76,7 @@ public class WebServer {
         _stop();
     }
 
-    public Request getRequest() {
-        return request;
-    }
-
-    public Response getResponse() {
-        return response;
+    public boolean running() {
+        return server > 0 ? true : false;
     }
 }

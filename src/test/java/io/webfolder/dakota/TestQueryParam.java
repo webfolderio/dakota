@@ -37,12 +37,9 @@ public class TestQueryParam {
 
         server = new WebServer(settings);
 
-        Request request = server.getRequest();
-        Response response = server.getResponse();
-
         Router router = new Router();
 
-        router.get("/foo", contextId -> {
+        router.get("/foo", (contextId, request, response) -> {
             request.createResponse(contextId, OK);
             queryMap = request.query(contextId);
             response.done(contextId);
@@ -61,6 +58,13 @@ public class TestQueryParam {
 
     @Test
     public void test() throws IOException {
+        while (!server.running()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         OkHttpClient client = new Builder().writeTimeout(240, SECONDS).readTimeout(240, SECONDS)
                 .connectTimeout(240, SECONDS).build();
         okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/foo?foo=bar&abc=123").build();

@@ -35,12 +35,9 @@ public class TestAsyncHttpGet {
 
         server = new WebServer(settings);
 
-        Request request = server.getRequest();
-        Response response = server.getResponse();
-
         Router router = new Router();
 
-        router.get("/foo", contextId -> {
+        router.get("/foo", (contextId, request, response) -> {
             new Thread(() -> {
                 request.createResponse(contextId, OK);
                 response.body(contextId, "hello, world!");
@@ -61,6 +58,13 @@ public class TestAsyncHttpGet {
 
     @Test
     public void test() throws IOException {
+        while (!server.running()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).retryOnConnectionFailure(true).build();
         req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/foo").build();

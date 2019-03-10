@@ -41,16 +41,13 @@ public class TestMultipleServer {
 
         server1 = new WebServer(settings1);
 
-        Request request1 = server1.getRequest();
-        Response response1 = server1.getResponse();
-
         Router router1 = new Router();
 
-        router1.get("/foo", contextId -> {
-            request1.createResponse(contextId, OK);
-            response1.body(contextId, "server1");
-            id1 = request1.connectionId(contextId);
-            response1.done(contextId);
+        router1.get("/foo", (contextId, request, response) -> {
+            request.createResponse(contextId, OK);
+            response.body(contextId, "server1");
+            id1 = request.connectionId(contextId);
+            response.done(contextId);
             return accepted;
         });
 
@@ -68,14 +65,11 @@ public class TestMultipleServer {
 
         Router router2 = new Router();
 
-        Request request2 = server1.getRequest();
-        Response response2 = server1.getResponse();
-        
-        router2.get("/foo", id -> {
-            request2.createResponse(id, OK);
-            response2.body(id, "server2");
-            id2 = request2.connectionId(id);
-            response2.done(id);
+        router2.get("/foo", (contextId, request, response) -> {
+            request.createResponse(contextId, OK);
+            response.body(contextId, "server2");
+            id2 = request.connectionId(contextId);
+            response.done(contextId);
             return accepted;
         });
 
@@ -94,6 +88,20 @@ public class TestMultipleServer {
 
     @Test
     public void test() throws IOException {
+        while (!server1.running()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        while (!server2.running()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req1 = new okhttp3.Request.Builder().url("http://localhost:" + freePort1 + "/foo").build();

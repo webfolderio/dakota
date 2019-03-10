@@ -38,13 +38,9 @@ public class TestHttpIndexParam {
         Settings settings = new Settings(freePort);
 
         server = new WebServer(settings);
-
-        Request request = server.getRequest();
-        Response response = server.getResponse();
-
         Router router = new Router();
 
-        router.get("/foo/([a-z_]+)", contextId -> {
+        router.get("/foo/([a-z_]+)", (contextId, request, response) -> {
             request.createResponse(contextId, OK);
             String bar = request.param(contextId, 0);
             this.bar = bar;
@@ -67,6 +63,13 @@ public class TestHttpIndexParam {
 
     @Test
     public void test() throws IOException {
+        while (!server.running()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/foo/test_param").build();

@@ -408,7 +408,7 @@ struct Restinio {
     Restinio(JNIEnv* env)
     {
         JNINativeMethod serverMethods[] = {
-            "_run", "(Lio/webfolder/dakota/Settings;[[Ljava/lang/Object;Lio/webfolder/dakota/Handler;)V", (void*)&Restinio::run,
+            "_run", "(Lio/webfolder/dakota/Settings;[[Ljava/lang/Object;Lio/webfolder/dakota/Handler;Lio/webfolder/dakota/Request;Lio/webfolder/dakota/Response;)V", (void*)&Restinio::run,
             "_stop", "()V", (void*)&Restinio::stop
         };
 
@@ -465,7 +465,13 @@ public:
         return httpMethod;
     }
 
-    static void run(JNIEnv* env, jobject that, jobject serverSettings, jobjectArray routes, jobject nonMatchedHandler)
+    static void run(JNIEnv* env,
+                    jobject that,
+                    jobject serverSettings,
+                    jobjectArray routes,
+                    jobject nonMatchedHandler,
+                    jobject oRequest,
+                    jobject oResponse)
     {
         JavaMethod mGetPort{ env, "io/webfolder/dakota/Settings", "getPort", "()I" };
         JavaMethod mAddress{ env, "io/webfolder/dakota/Settings", "getAddress", "()Ljava/lang/String;" };
@@ -474,7 +480,7 @@ public:
         String s_address{ env, address };
 
         JavaClass klassRequest{ env, "io/webfolder/dakota/RequestImpl" };
-        JavaMethod handleMethod{ env, "io/webfolder/dakota/Handler", "handle", "(J)Lio/webfolder/dakota/HandlerStatus;" };
+        JavaMethod handleMethod{ env, "io/webfolder/dakota/Handler", "handle", "(JLio/webfolder/dakota/Request;Lio/webfolder/dakota/Response;)Lio/webfolder/dakota/HandlerStatus;" };
         JavaField statusField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
 
         std::random_device dev;
@@ -495,7 +501,9 @@ public:
             }
             jlong contextId = (jlong)(random | (std::uint64_t)context);
             connections.insert(contextId, context);
-            jobject handlerStatus = envCurrentThread->CallObjectMethod(handler, handleMethod.get(), contextId);
+            jobject handlerStatus = envCurrentThread->CallObjectMethod(handler,
+                            handleMethod.get(),
+                            contextId, oRequest, oResponse);
             if (envCurrentThread->ExceptionCheck()) {
                 connections.erase(contextId);
                 delete context;
@@ -575,6 +583,7 @@ public:
     {
         JavaField fServer = { env, "io/webfolder/dakota/WebServer", "server", "J" };
         jlong ptrServer = env->GetLongField(that, fServer.get());
+        env->SetLongField(that, fServer.get(), -1);
         using server_t = restinio::http_server_t<dakota_traits>;
         if (ptrServer > 0) {
             auto* server = (server_t*)ptrServer;

@@ -39,12 +39,9 @@ public class TestHttpParam {
 
         server = new WebServer(settings);
 
-        Request request = server.getRequest();
-        Response response = server.getResponse();
-
         Router router = new Router();
 
-        router.get("/foo/:bar(\\d{2})", contextId -> {
+        router.get("/foo/:bar(\\d{2})", (contextId, request, response) -> {
             request.createResponse(contextId, OK);
             String bar = request.param(contextId, "bar");
             this.bar = bar;
@@ -67,6 +64,13 @@ public class TestHttpParam {
 
     @Test
     public void test() throws IOException {
+        while (!server.running()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/foo/20").build();

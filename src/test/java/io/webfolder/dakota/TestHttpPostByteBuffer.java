@@ -38,12 +38,9 @@ public class TestHttpPostByteBuffer {
 
         server = new WebServer(settings);
 
-        Request request = server.getRequest();
-        Response response = server.getResponse();
-
         Router router = new Router();
 
-        router.post("/foo", contextId -> {
+        router.post("/foo", (contextId, request, response) -> {
             request.createResponse(contextId, OK);
             ByteBuffer requestBuffer = request.bodyAsByteBuffer(contextId);
             byte[] content = new byte[requestBuffer.remaining()];
@@ -68,6 +65,13 @@ public class TestHttpPostByteBuffer {
 
     @Test
     public void test() throws IOException {
+        while (!server.running()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req = new okhttp3.Request.Builder()

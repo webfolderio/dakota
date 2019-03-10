@@ -34,7 +34,7 @@ public class TestNotFoundHandler {
         server = new WebServer(settings);
 
         Router router = new Router();
-        new Thread(() -> server.run(router, new NotFoundHandler(server))).start();
+        new Thread(() -> server.run(router, new NotFoundHandler())).start();
     }
 
     @After
@@ -46,6 +46,13 @@ public class TestNotFoundHandler {
 
     @Test
     public void test() throws IOException {
+        while (!server.running()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         OkHttpClient client = new Builder().writeTimeout(10, SECONDS).readTimeout(10, SECONDS)
                 .connectTimeout(10, SECONDS).retryOnConnectionFailure(true).build();
         Request req = new okhttp3.Request.Builder().url("http://localhost:" + freePort + "/invalid-url").build();

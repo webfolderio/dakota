@@ -35,12 +35,9 @@ public class TestHttpPostByteArray {
 
         server = new WebServer(settings);
 
-        Request request = server.getRequest();
-        Response response = server.getResponse();
-
         Router router = new Router();
 
-        router.post("/foo", contextId -> {
+        router.post("/foo", (contextId, request, response) -> {
             request.createResponse(contextId, OK);
             String body = new String(request.bodyAsByteArray(contextId));
             byte[] content = body.getBytes();
@@ -61,6 +58,13 @@ public class TestHttpPostByteArray {
 
     @Test
     public void test() throws IOException {
+        while (!server.running()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         OkHttpClient client = new Builder().writeTimeout(1000, SECONDS).readTimeout(1000, SECONDS)
                 .connectTimeout(1000, SECONDS).retryOnConnectionFailure(true).build();
         okhttp3.Request req = new okhttp3.Request.Builder()
