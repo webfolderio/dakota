@@ -5,13 +5,12 @@ jobs:
     working_directory: ~/dako
 
     docker:
-      - image: ubuntu:18.04
+      - image: ubuntu:19.04
 
     steps:
 
       - checkout
 
-      - run: add-apt-repository ppa:ubuntu-toolchain-r/test
       - run: apt-get update -qq
       - run: apt-get install -y gcc-8 g++-8 git default-jdk curl unzip zip
 
