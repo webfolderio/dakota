@@ -11,8 +11,9 @@ jobs:
 
       - checkout
 
+      - run: sudo add-apt-repository ppa:ubuntu-toolchain-r/test
       - run: apt-get update -qq
-      - run: apt-get install -y build-essential git default-jdk curl unzip zip
+      - run: apt-get install -y gcc-8 g++-8 git default-jdk curl unzip zip
 
       - run:
           name: install vcpkg
