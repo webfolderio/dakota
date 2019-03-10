@@ -5,13 +5,15 @@ jobs:
     working_directory: ~/dako
 
     docker:
-      - image: gcc:8.1.0
+      - image: ubuntu:18.04
 
     steps:
 
       - checkout
 
-      - run: sudo apt-get install curl unzip tar
+      - run: apt-get update -qq
+
+      - run: apt-get install -y software-properties-common
 
       - run:
           name: install vcpkg
