@@ -16,7 +16,17 @@ jobs:
       
       - run: mvn dependency:go-offline
       
-      - save_cache:
+      - run: git clone https://github.com/Microsoft/vcpkg.git
+      - run: ./vcpkg/bootstrap-vcpkg.sh
+      - run: ./vcpkg/vcpkg integrate install
+      - run: ./vcpkg/vcpkg install restinio:x64-linux
+      - run: cmake .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
+      - run: cmake .. -DCMAKE_BUILD_TYPE=Release
+      - run: make
+      - run: strip libdakota.so
+      - run: libdakota.so ../../src/main/resources/META-INF
+
+- save_cache:
           paths:
             - ~/.m2
           key: dakota-{{ checksum "pom.xml" }}
