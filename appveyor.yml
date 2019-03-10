@@ -33,11 +33,12 @@ build_script:
   - sh: cd $APPVEYOR_BUILD_FOLDER && mvn -DskipTests -q package
   - cmd: vcpkg.exe install restinio:x64-windows-static
   - cmd: scripts\build.bat
-  - cmd: mvn -DskipTests -q clean package
+  - cmd: java -version
+  - cmd: mvn -DskipTests -q package
 
 test_script:
-  - cmd: mvn -q surefire-report:report
-  - sh: cd $APPVEYOR_BUILD_FOLDER && mvn -q surefire-report:report
+  - cmd: mvn surefire-report:report
+  - sh: cd $APPVEYOR_BUILD_FOLDER && mvn surefire-report:report
 
 after_test:
   - ps: |
