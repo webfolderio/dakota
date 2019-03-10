@@ -10,15 +10,10 @@ platform: x64
 
 stack: jdk 11
 
-build:
-    verbosity: minimal
-
 cache:
   - vcpkg -> appveyor.yml
   - C:\tools\vcpkg\installed -> appveyor.yml
-
-before_build:
-  - cmd: git --work-tree=C:\tools\vcpkg --git-dir=C:\tools\vcpkg\.git pull
+  - C:\tools\vcpkg\packages -> appveyor.yml
 
 build_script:
   - sh: |
