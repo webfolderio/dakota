@@ -7,3 +7,13 @@ build_script:
   - sh: CC=gcc-8 CXX=g++-8 ./vcpkg/bootstrap-vcpkg.sh
   - sh: ./vcpkg/vcpkg integrate install
   - sh: ./vcpkg/vcpkg install restinio:x64-linux
+  - sh: cd native
+  - sh: mkdir build
+  - sh: CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/appveyor/projects/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
+  - sh: cmake .. -DCMAKE_BUILD_TYPE=Release
+  - sh: make
+  - sh: strip libdakota.so
+  - sh: cp libdakota.so ../../src/main/resources/META-INF
+  - sh: cd ..
+  - sh: cd ..
+  - sh: mvn package
