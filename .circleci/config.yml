@@ -5,14 +5,14 @@ jobs:
     working_directory: ~/dako
 
     docker:
-      - image: ubuntu:19.04
+      - image: ubuntu:18.04
 
     steps:
 
       - checkout
 
       - run: apt-get update -qq
-      - run: apt-get install -y gcc-8 g++-8 git default-jdk curl unzip zip
+      - run: apt-get install -y gcc-7 g++-7 git default-jdk curl unzip zip
 
       - run:
           name: install vcpkg
