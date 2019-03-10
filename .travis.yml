@@ -10,7 +10,7 @@ cache:
 script:
   - git clone https://github.com/Microsoft/vcpkg.git
   - cd vcpkg
-  - ./bootstrap-vcpkg.sh
+  - VCPKG_ALLOW_APPLE_CLANG=true ./bootstrap-vcpkg.sh
   - ./vcpkg integrate install
   - ./vcpkg install restinio:x64-osx
   - java -version
