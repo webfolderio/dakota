@@ -1,6 +1,12 @@
 version: 1.0.'{build}'
 image:
  - ubuntu1804
+ - Visual Studio 2017
+
+platform: x64
+
+before_build:
+  - cmd: git --work-tree=C:\tools\vcpkg --git-dir=C:\tools\vcpkg\.git pull
 
 stack: jdk 11.0.1
 
@@ -15,4 +21,24 @@ build_script:
   - sh: cd $APPVEYOR_BUILD_FOLDER/native/build && make
   - sh: strip $APPVEYOR_BUILD_FOLDER/native/build/libdakota.so
   - sh: cp $APPVEYOR_BUILD_FOLDER/native/build/libdakota.so $APPVEYOR_BUILD_FOLDER/src/main/resources/META-INF
-  - sh: cd $APPVEYOR_BUILD_FOLDER && mvn package
+  - sh: java -version
+  - sh: cd $APPVEYOR_BUILD_FOLDER && mvn -DskipTests -q package
+  - cmd: vcpkg.exe install restinio:x64-windows-static
+  - cmd: scripts\build.bat
+  - cmd: mvn -DskipTests -q clean package
+
+test_script:
+  - cmd: mvn surefire-report:report
+  - sh: cd $APPVEYOR_BUILD_FOLDER && mvn surefire-report:report
+
+after_test:
+  - ps: |
+        $wc = New-Object 'System.Net.WebClient'
+        Get-ChildItem . -Name -Recurse 'TEST-*.xml'  |
+        Foreach-Object {
+            $wc.UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path $_))
+        }
+
+artifacts:
+  - path: target/dakota-1.0.0-SNAPSHOT.jar
+    name: dakota library
