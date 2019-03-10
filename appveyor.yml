@@ -2,16 +2,17 @@ version: 1.0.'{build}'
 image:
  - ubuntu1804
 
+stack: jdk 11.0.1
+
 build_script:
   - sh: git clone https://github.com/Microsoft/vcpkg.git
   - sh: CC=gcc-8 CXX=g++-8 ./vcpkg/bootstrap-vcpkg.sh
   - sh: ./vcpkg/vcpkg integrate install
   - sh: ./vcpkg/vcpkg install restinio:x64-linux
-  - sh: cd native
-  - sh: mkdir build
-  - sh: CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/appveyor/projects/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
-  - sh: cmake .. -DCMAKE_BUILD_TYPE=Release
-  - sh: make
-  - sh: strip /home/appveyor/projects/dakota/build/libdakota.so
-  - sh: cp /home/appveyor/projects/dakota/native/build/libdakota.so /home/appveyor/projects/dakota/src/main/resources/META-INF
-  - sh: cd /home/appveyor/projects/dakota && mvn package
+  - sh: cd $APPVEYOR_BUILD_FOLDER && cd native && mkdir build
+  - sh: cd $APPVEYOR_BUILD_FOLDER/.. && CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_TOOLCHAIN_FILE=$APPVEYOR_BUILD_FOLDER/../vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
+  - sh: cd $APPVEYOR_BUILD_FOLDER/.. && cmake .. -DCMAKE_BUILD_TYPE=Release
+  - sh: cd $APPVEYOR_BUILD_FOLDER/.. && make
+  - sh: strip $APPVEYOR_BUILD_FOLDER/native/build/libdakota.so
+  - sh: cp $APPVEYOR_BUILD_FOLDER/native/build/libdakota.so $APPVEYOR_BUILD_FOLDER/src/main/resources/META-INF
+  - sh: cd $APPVEYOR_BUILD_FOLDER && mvn package
