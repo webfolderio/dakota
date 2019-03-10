@@ -10,8 +10,12 @@ platform: x64
 
 stack: jdk 11
 
+build:
+    verbosity: minimal
+
 cache:
   - vcpkg -> appveyor.yml
+  - C:\tools\vcpkg\installed -> appveyor.yml
 
 before_build:
   - cmd: git --work-tree=C:\tools\vcpkg --git-dir=C:\tools\vcpkg\.git pull
@@ -37,8 +41,8 @@ build_script:
   - cmd: mvn -DskipTests -q clean package
 
 test_script:
-  - cmd: mvn surefire-report:report
-  - sh: cd $APPVEYOR_BUILD_FOLDER && mvn surefire-report:report
+  - cmd: mvn -q surefire-report:report
+  - sh: cd $APPVEYOR_BUILD_FOLDER && mvn -q surefire-report:report
 
 after_test:
   - ps: |
