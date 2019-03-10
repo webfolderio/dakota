@@ -7,12 +7,15 @@ cache:
   directories:
   - $HOME/.m2
 
-script:
+install:
+  - brew install gcc@8
   - git clone https://github.com/Microsoft/vcpkg.git
   - cd vcpkg
-  - VCPKG_ALLOW_APPLE_CLANG=true ./bootstrap-vcpkg.sh
+  - CC=gcc-8 CXX=g++-8 ./bootstrap-vcpkg.sh
   - ./vcpkg integrate install
   - ./vcpkg install restinio:x64-osx
+
+script:
   - java -version
   - cd native
   - mkdir build
