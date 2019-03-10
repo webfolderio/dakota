@@ -17,6 +17,14 @@ jobs:
       - run: mvn dependency:go-offline
       
       - run:
+          name: install gcc-8
+          command: |
+            sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+            sudo apt-get update
+            sudo apt-get install gcc-8 g++-8
+            gcc-8 --version
+
+      - run:
           name: install vcpkg
           command: |
             git clone https://github.com/Microsoft/vcpkg.git
