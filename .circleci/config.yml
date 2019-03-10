@@ -14,6 +14,7 @@ jobs:
       - run: apt-get update -qq
       - run: apt-get install -y software-properties-common      
       - run: apt-get install -y git
+      - run: apt-get install -y curl
       - run: apt-get install -y default-jdk
 
       - run:
