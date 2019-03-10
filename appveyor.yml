@@ -1,14 +1,20 @@
 version: 1.0.'{build}'
+
 image:
  - ubuntu1804
  - Visual Studio 2017
 
+configuration: Release
+
 platform: x64
+
+stack: jdk 11
+
+cache:
+  - vcpkg -> appveyor.yml
 
 before_build:
   - cmd: git --work-tree=C:\tools\vcpkg --git-dir=C:\tools\vcpkg\.git pull
-
-stack: jdk 11.0.1
 
 build_script:
   - sh: git clone https://github.com/Microsoft/vcpkg.git
