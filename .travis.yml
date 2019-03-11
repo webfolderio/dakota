@@ -24,11 +24,10 @@ install:
   ./vcpkg install restinio:x64-osx
 
 script:
-  - cd /home/travis/build/webfolderio/dakota/native && mkdir build
-  - cd /home/travis/build/webfolderio/dakota/native/build && CC=clang CXX=clang++ cmake .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-osx
-  - cd /home/travis/build/webfolderio/dakota/native/build && CC=clang CXX=clang++ cmake .. -DCMAKE_BUILD_TYPE=Release
-  - cd /home/travis/build/webfolderio/dakota/native/build && CC=clang CXX=clang++ make
-  - cd /home/travis/build/webfolderio/dakota/native/build && cp libdakota.dylib ../../src/main/resources/META-INF
-  - cd /home/travis/build/webfolderio/dakota && mvn -q -DskipTests package
-  - cd /home/travis/build/webfolderio/dakota && mvn test
-  
+  - cd $TRAVIS_BUILD_DIR/native && mkdir build
+  - cd $TRAVIS_BUILD_DIR/native/build && CC=clang CXX=clang++ cmake .. -DCMAKE_TOOLCHAIN_FILE=/Users/travis/build/webfolderio/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-osx
+  - cd $TRAVIS_BUILD_DIR/native/build && CC=clang CXX=clang++ cmake .. -DCMAKE_BUILD_TYPE=Release
+  - cd $TRAVIS_BUILD_DIR/native/build && CC=clang CXX=clang++ make
+  - cd $TRAVIS_BUILD_DIR/native/build && cp libdakota.dylib ../../src/main/resources/META-INF
+  - cd $TRAVIS_BUILD_DIR && mvn -q -DskipTests package
+  - cd $TRAVIS_BUILD_DIR && mvn test
