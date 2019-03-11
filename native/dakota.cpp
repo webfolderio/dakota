@@ -12,6 +12,11 @@
 #define HANDLER_STATUS_REJECTED 0
 #define HANDLER_STATUS_ACCEPTED 1
 
+#define L_LEVEL_TRACE 1
+#define L_LEVEL_INFO 2
+#define L_LEVEL_WARN 3
+#define L_LEVEL_ERROR 4
+
 static std::atomic<JavaVM*> jvm;
 static std::map<std::thread::id, jlong> envCache;
 
@@ -136,11 +141,6 @@ public:
     }
 };
 
-#define L_LEVEL_TRACE 1
-#define L_LEVEL_INFO  2
-#define L_LEVEL_WARN  3
-#define L_LEVEL_ERROR 4
-
 class dakota_logger_t {
 public:
     dakota_logger_t(jobject logger) noexcept
@@ -182,27 +182,29 @@ private:
 
     void log_message(int tag, const std::string& msg)
     {
-        if (envCache.count(std::this_thread::get_id())) {
+        try {
             auto env = *(JNIEnv**)&envCache.at(std::this_thread::get_id());
             if (env) {
                 char* method;
                 switch (tag) {
-                    case L_LEVEL_TRACE:
-                        method = "trace";
+                case L_LEVEL_TRACE:
+                    method = "trace";
                     break;
-                    case L_LEVEL_INFO:
-                        method = "info";
+                case L_LEVEL_INFO:
+                    method = "info";
                     break;
-                    case L_LEVEL_WARN:
-                        method = "warn";
+                case L_LEVEL_WARN:
+                    method = "warn";
                     break;
-                    case L_LEVEL_ERROR:
-                        method = "error";
+                case L_LEVEL_ERROR:
+                    method = "error";
                     break;
                 }
                 JavaMethod mInfo{ env, "io/webfolder/dakota/Logger", method, "(Ljava/lang/String;)V" };
                 env->CallObjectMethod(logger_, mInfo.get(), env->NewStringUTF(msg.c_str()));
             }
+        } catch (const std::exception& e) {
+            // ignore
         }
     }
 };
