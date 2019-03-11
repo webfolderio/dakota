@@ -24,16 +24,10 @@ install:
   ./vcpkg install restinio:x64-osx
 
 script:
-  - cd $HOME && pwd
-  - cd native
-  - mkdir build
-  - cd build
-  - CC=clang CXX=clang++ cmake .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-osx
-  - CC=clang CXX=clang++ cmake .. -DCMAKE_BUILD_TYPE=Release
-  - CC=clang CXX=clang++ make
-  - cp libdakota.dylib ../../src/main/resources/META-INF
-  - cd ..
-  - cd ..
-  - mvn -q -DskipTests package
-  - mvn test
-  
+  - cd $TRAVIS_BUILD_DIR/native && mkdir build
+  - cd $TRAVIS_BUILD_DIR/native/build && CC=clang CXX=clang++ cmake .. -DCMAKE_TOOLCHAIN_FILE=/Users/travis/build/webfolderio/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-osx
+  - cd $TRAVIS_BUILD_DIR/native/build && CC=clang CXX=clang++ cmake .. -DCMAKE_BUILD_TYPE=Release
+  - cd $TRAVIS_BUILD_DIR/native/build && CC=clang CXX=clang++ make
+  - cd $TRAVIS_BUILD_DIR/native/build && cp libdakota.dylib ../../src/main/resources/META-INF
+  - cd $TRAVIS_BUILD_DIR && mvn -q -DskipTests package
+  - cd $TRAVIS_BUILD_DIR && mvn test
