@@ -12,7 +12,7 @@ class ResponseImpl implements Response {
 
     private static final ByteOrder ORDER = nativeOrder();
 
-    private native void _body(long contextId, String content);
+    private native void _body(long contextId, String content, boolean compress);
 
     private native void _body(long contextId, ByteBuffer content);
 
@@ -32,7 +32,12 @@ class ResponseImpl implements Response {
 
     @Override
     public void body(long contextId, String content) {
-        _body(contextId, content);
+        _body(contextId, content, false);
+    }
+
+    @Override
+    public void body(long contextId, String content, boolean compress) {
+        _body(contextId, content, compress);
     }
 
     @Override

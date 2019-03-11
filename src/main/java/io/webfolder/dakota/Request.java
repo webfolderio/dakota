@@ -8,7 +8,7 @@ public interface Request {
     void createResponse(long contextId, HttpStatus status);
 
     String body(long contextId);
-    
+
     byte[] bodyAsByteArray(long contextId);
 
     ByteBuffer bodyAsByteBuffer(long contextId);

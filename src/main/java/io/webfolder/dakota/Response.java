@@ -7,6 +7,8 @@ public interface Response {
 
     void body(long contextId, String content);
 
+    void body(long contextId, String content, boolean compress);
+
     void body(long contextId, byte[] content);
 
     void body(long contextId, ByteBuffer content);

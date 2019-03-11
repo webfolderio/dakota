@@ -460,7 +460,7 @@ struct Restinio {
 
         JNINativeMethod responseImpl[] = {
             "_done", "(J)V", (void*)&Restinio::done,
-            "_body", "(JLjava/lang/String;)V", (void*)&Restinio::setBody,
+            "_body", "(JLjava/lang/String;Z)V", (void*)&Restinio::setBody,
             "_body", "(JLjava/nio/ByteBuffer;)V", (void*)&Restinio::setBodyByteBuffer,
             "_body", "(J[B)V", (void*)&Restinio::setBodyByteArray,
             "_sendfile", "(JLjava/lang/String;)V", (void*)&Restinio::sendFile,
@@ -486,7 +486,7 @@ public:
         } else if (strcmp(method, "head") == 0) {
             httpMethod = restinio::http_method_t::http_head;
         } else if (strcmp(method, "put") == 0) {
-            httpMethod = restinio::http_method_t::http_put; 
+            httpMethod = restinio::http_method_t::http_put;
         } else if (strcmp(method, "trace") == 0) {
             httpMethod = restinio::http_method_t::http_trace;
         } else if (strcmp(method, "options") == 0) {
@@ -812,12 +812,34 @@ public:
         }
     }
 
-    static void setBody(JNIEnv* env, jobject that, jlong contextId, jstring body)
+    static void setBody(JNIEnv* env, jobject that, jlong contextId, jstring body, jboolean compress)
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
             String str{ env, body };
-            context->response()->set_body(str.c_str());
+            if (compress == JNI_FALSE) {
+                context->response()->set_body(str.c_str());
+            } else {
+                bool hasContentEncoding = (*context->request())->header().has_field(restinio::http_field_t::accept_encoding);
+                bool supportsGzip = false;
+                if (hasContentEncoding) {
+                    auto ce = (*context->request())->header().get_field(restinio::http_field_t::accept_encoding);
+                    std::string token;
+                    std::istringstream tokenStream(ce);
+                    while (std::getline(tokenStream, token, ',')) {
+                        if (token == "gzip") {
+                            supportsGzip = true;
+                        }
+                    }
+                }
+                if (supportsGzip) {
+                    context->response()->append_header(restinio::http_field_t::content_encoding, "gzip");
+                    std::string compressed = restinio::transforms::zlib::gzip_compress(str.c_str());
+                    context->response()->set_body(compressed);
+                } else {
+                    context->response()->set_body(str.c_str());
+                }
+            }
         }
     }
 

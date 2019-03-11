@@ -22,6 +22,7 @@ find_package(unofficial-http-parser REQUIRED)
 find_package(fmt REQUIRED)
 find_package(restinio REQUIRED)
 find_package(Threads REQUIRED)
+find_package(zlib REQUIRED)
 
 INCLUDE_DIRECTORIES(${JAVA_INCLUDE_PATH})
 INCLUDE_DIRECTORIES(${JAVA_INCLUDE_PATH2})
@@ -38,6 +39,6 @@ endif(MSVC)
 
 add_library(dakota SHARED stdafx.h stdafx.cpp dakota.cpp HashMap.hpp HashNode.hpp)
 
-target_link_libraries(dakota PRIVATE restinio::restinio Threads::Threads)
+target_link_libraries(dakota PRIVATE restinio::restinio Threads::Threads ZLIB::ZLIB)
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT dakota)
