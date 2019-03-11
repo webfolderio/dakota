@@ -26,6 +26,21 @@ public class Router {
         return this;
     }
 
+    public Router put(String path, Handler handler) {
+        addHandler("put", path, handler);
+        return this;
+    }
+
+    public Router trace(String path, Handler handler) {
+        addHandler("trace", path, handler);
+        return this;
+    }
+
+    public Router options(String path, Handler handler) {
+        addHandler("options", path, handler);
+        return this;
+    }
+
     private void addHandler(String method, String path, Handler handler) {
         Object[][] copy = new Object[routes.length + 1][];
         arraycopy(routes, 0, copy, 0, routes.length);

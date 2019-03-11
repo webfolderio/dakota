@@ -20,12 +20,6 @@
 static std::atomic<JavaVM*> jvm;
 static std::map<std::thread::id, jlong> envCache;
 
-
-enum ReflectionCacheType {
-    global,
-    local
-};
-
 class String {
     JNIEnv* env_;
     jstring java_str_;
@@ -50,7 +44,6 @@ public:
 class JavaClass {
 
     JNIEnv* env_;
-    ReflectionCacheType type_;
     jclass klass_;
 
 public:
@@ -58,31 +51,13 @@ public:
     JavaClass(JavaClass&&) = delete;
     ~JavaClass()
     {
-        switch (type_) {
-        case global:
-            env_->DeleteGlobalRef(klass_);
-            break;
-        default:
-            env_->DeleteLocalRef(klass_);
-        }
+        env_->DeleteLocalRef(klass_);
     }
 
     JavaClass(JNIEnv* env, const char* className)
-        : JavaClass(env, local, className)
-    {
-    }
-
-    JavaClass(JNIEnv* env, ReflectionCacheType type, const char* className)
         : env_(env)
-        , type_(type)
     {
-        jclass klass = env_->FindClass(className);
-        if (type_ == global) {
-            klass_ = (jclass)env_->NewGlobalRef(klass);
-            env->DeleteLocalRef(klass);
-        } else {
-            klass_ = klass;
-        }
+        klass_ = env_->FindClass(className);
     }
 
     jclass get() const noexcept
@@ -94,7 +69,6 @@ public:
 class JavaMethod {
 
     JNIEnv* env_;
-    ReflectionCacheType type_;
     jmethodID method_;
 
 public:
@@ -102,35 +76,18 @@ public:
     JavaMethod(JavaMethod&&) = delete;
     ~JavaMethod()
     {
-        switch (type_) {
-        case global:
-            env_->DeleteGlobalRef((jobject)method_);
-            break;
-        default:
-            env_->DeleteLocalRef((jobject)method_);
-        }
+        env_->DeleteLocalRef((jobject)method_);
     }
 
-    JavaMethod(JNIEnv* env, const char* klass,
-        const char* name, const char* signature)
-        : JavaMethod(env, local, klass, name, signature)
-    {
-    }
-
-    JavaMethod(JNIEnv* env, ReflectionCacheType type,
+    JavaMethod(JNIEnv* env,
         const char* klass, const char* name,
         const char* signature)
         : env_(env)
-        , type_(type)
     {
         jclass klass_ = env_->FindClass(klass);
         if (klass_) {
             jmethodID method = env->GetMethodID(klass_, name, signature);
-            if (type_ == global) {
-                method_ = (jmethodID)env_->NewGlobalRef((jobject)method);
-            } else {
-                method_ = (jmethodID)env_->NewLocalRef((jobject)method);
-            }
+            method_ = (jmethodID)env_->NewLocalRef((jobject)method);
             env->DeleteLocalRef(klass_);
         }
     }
@@ -177,7 +134,6 @@ public:
     }
 
 private:
-
     jobject logger_;
 
     void log_message(int tag, const std::string& msg)
@@ -203,7 +159,7 @@ private:
                 JavaMethod mInfo{ env, "io/webfolder/dakota/Logger", method, "(Ljava/lang/String;)V" };
                 env->CallObjectMethod(logger_, mInfo.get(), env->NewStringUTF(msg.c_str()));
             }
-        } catch (const std::exception& e) {
+        } catch (const std::exception&) {
             // ignore
         }
     }
@@ -529,17 +485,23 @@ public:
             httpMethod = restinio::http_method_t::http_delete;
         } else if (strcmp(method, "head") == 0) {
             httpMethod = restinio::http_method_t::http_head;
+        } else if (strcmp(method, "put") == 0) {
+            httpMethod = restinio::http_method_t::http_put; 
+        } else if (strcmp(method, "trace") == 0) {
+            httpMethod = restinio::http_method_t::http_trace;
+        } else if (strcmp(method, "options") == 0) {
+            httpMethod = restinio::http_method_t::http_options;
         }
         return httpMethod;
     }
 
     static void run(JNIEnv* env,
-                    jobject that,
-                    jobject serverSettings,
-                    jobjectArray routes,
-                    jobject nonMatchedHandler,
-                    jobject oRequest,
-                    jobject oResponse)
+        jobject that,
+        jobject serverSettings,
+        jobjectArray routes,
+        jobject nonMatchedHandler,
+        jobject oRequest,
+        jobject oResponse)
     {
         JavaMethod mGetPort{ env, "io/webfolder/dakota/Settings", "getPort", "()I" };
         JavaMethod mAddress{ env, "io/webfolder/dakota/Settings", "getAddress", "()Ljava/lang/String;" };
@@ -570,8 +532,8 @@ public:
             jlong contextId = (jlong)(random | (std::uint64_t)context);
             connections.insert(contextId, context);
             jobject handlerStatus = envCurrentThread->CallObjectMethod(handler,
-                            handleMethod.get(),
-                            contextId, oRequest, oResponse);
+                handleMethod.get(),
+                contextId, oRequest, oResponse);
             if (envCurrentThread->ExceptionCheck()) {
                 connections.erase(contextId);
                 delete context;
@@ -623,7 +585,7 @@ public:
         auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
                             .port((uint16_t)port)
                             .address(s_address.c_str())
-                            .logger(std::move(dakota_logger_t{logger}))
+                            .logger(std::move(dakota_logger_t{ logger }))
                             .request_handler(std::move(router));
 
         server = new server_t{
@@ -879,7 +841,7 @@ public:
             if (buffer) {
                 jsize size = env->GetArrayLength(body);
                 context->setResponseNativeArray(buffer);
-                context->setResponseArray((jbyteArray) env->NewGlobalRef(body));
+                context->setResponseArray((jbyteArray)env->NewGlobalRef(body));
                 context->response()->set_body(restinio::const_buffer((const char*)context->getResponseNativeArray(), size));
                 if (isCopy) {
                     context->setReleaseMode(0);
