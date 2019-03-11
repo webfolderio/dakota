@@ -36,3 +36,4 @@ script:
   - cd ..
   - mvn -q -DskipTests package
   - mvn test
+  
