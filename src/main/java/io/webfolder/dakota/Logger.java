@@ -2,11 +2,15 @@ package io.webfolder.dakota;
 
 public interface Logger {
 
-    void trace(String msg);
+    public static final int TRACE = 0;
 
-    void info(String msg);
+    public static final int INFO  = 1;
 
-    void error(String msg);
+    public static final int WARN  = 2;
 
-    void warn(String msg);
+    public static final int ERROR = 3;
+
+    void log(int level, String message);
+
+    boolean ennabled(int level);
 }

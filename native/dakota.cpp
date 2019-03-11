@@ -12,10 +12,10 @@
 #define HANDLER_STATUS_REJECTED 0
 #define HANDLER_STATUS_ACCEPTED 1
 
-#define L_LEVEL_TRACE 1
-#define L_LEVEL_INFO 2
-#define L_LEVEL_WARN 3
-#define L_LEVEL_ERROR 4
+#define L_LEVEL_TRACE 0
+#define L_LEVEL_INFO 1
+#define L_LEVEL_WARN 2
+#define L_LEVEL_ERROR 3
 
 static std::atomic<JavaVM*> jvm;
 static std::map<std::thread::id, jlong> envCache;
@@ -100,8 +100,14 @@ public:
 
 class dakota_logger_t {
 public:
-    dakota_logger_t(jobject logger) noexcept
-        : logger_{ logger }
+    dakota_logger_t(jobject logger, JavaMethod* method, bool ennabled[]) noexcept
+        : logger_{ logger }, method_(method)
+        , ennabled_{
+                    ennabled[L_LEVEL_TRACE],
+                    ennabled[L_LEVEL_INFO],
+                    ennabled[L_LEVEL_WARN],
+                    ennabled[L_LEVEL_ERROR]
+                    }
     {
     }
 
@@ -135,32 +141,20 @@ public:
 
 private:
     jobject logger_;
+    JavaMethod* method_;
+    bool ennabled_[4];
 
-    void log_message(int tag, const std::string& msg)
+    void log_message(int level, const std::string& msg)
     {
-        try {
-            auto env = *(JNIEnv**)&envCache.at(std::this_thread::get_id());
-            if (env) {
-                char* method;
-                switch (tag) {
-                case L_LEVEL_TRACE:
-                    method = "trace";
-                    break;
-                case L_LEVEL_INFO:
-                    method = "info";
-                    break;
-                case L_LEVEL_WARN:
-                    method = "warn";
-                    break;
-                case L_LEVEL_ERROR:
-                    method = "error";
-                    break;
+        if (ennabled_[level]) {
+            try {
+                auto env = *(JNIEnv**)&envCache.at(std::this_thread::get_id());
+                if (env) {
+                    env->CallObjectMethod(logger_, method_->get(), level, env->NewStringUTF(msg.c_str()));
                 }
-                JavaMethod mInfo{ env, "io/webfolder/dakota/Logger", method, "(Ljava/lang/String;)V" };
-                env->CallObjectMethod(logger_, mInfo.get(), env->NewStringUTF(msg.c_str()));
-            }
-        } catch (const std::exception&) {
-            // ignore
+            } catch (const std::exception&) {
+                // ignore
+            }        
         }
     }
 };
@@ -581,11 +575,20 @@ public:
 
         JavaMethod mGetLogger{ env, "io/webfolder/dakota/WebServer", "getLogger", "()Lio/webfolder/dakota/Logger;" };
         jobject logger = env->CallObjectMethod(that, mGetLogger.get());
+        JavaMethod* methodLog = new JavaMethod{ env, "io/webfolder/dakota/Logger", "log", "(ILjava/lang/String;)V" };
+        JavaMethod methodEnnabled{ env, "io/webfolder/dakota/Logger", "ennabled", "(I)Z" };
+
+        bool ennabled[4] = {false, false, false, false};
+
+        ennabled[L_LEVEL_TRACE] = env->CallBooleanMethod(logger, methodEnnabled.get(), L_LEVEL_TRACE) == JNI_TRUE;
+        ennabled[L_LEVEL_INFO] = env->CallBooleanMethod(logger, methodEnnabled.get(), L_LEVEL_INFO) == JNI_TRUE;
+        ennabled[L_LEVEL_WARN] = env->CallBooleanMethod(logger, methodEnnabled.get(), L_LEVEL_WARN) == JNI_TRUE;
+        ennabled[L_LEVEL_ERROR] = env->CallBooleanMethod(logger, methodEnnabled.get(), L_LEVEL_ERROR) == JNI_TRUE;
 
         auto settings = restinio::on_thread_pool<dakota_traits>(pool_size)
                             .port((uint16_t)port)
                             .address(s_address.c_str())
-                            .logger(std::move(dakota_logger_t{ logger }))
+                            .logger(std::move(dakota_logger_t{ logger, methodLog, ennabled }))
                             .request_handler(std::move(router));
 
         server = new server_t{
@@ -603,7 +606,7 @@ public:
             JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
             env->ThrowNew(exceptionClass.get(), ex.what());
             if (server)
-                delete server;
+                delete methodLog, server;
             return;
         }
 
@@ -611,6 +614,8 @@ public:
         env->SetLongField(that, fServer.get(), (jlong)server);
 
         pool.wait();
+
+        delete methodLog;
     }
 
     static void stop(JNIEnv* env, jobject that)

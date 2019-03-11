@@ -5,22 +5,38 @@ import static java.lang.String.format;
 public class ConsoleLogger implements Logger {
 
     @Override
-    public void trace(String msg) {
-        System.out.println(format("[%s] %s", "TRACE", msg));
+    public void log(int level, String message) {
+        System.out.println(format("[%s] %s", toString(level), message));
     }
 
     @Override
-    public void info(String msg) {
-        System.out.println(format("[%s] %s", "INFO", msg));
+    public boolean ennabled(int level) {
+        switch (level) {
+            case TRACE:
+                return true;
+            case INFO:
+                return true;
+            case WARN:
+                return true;
+            case ERROR:
+                return true;
+            default:
+                return true;
+        }
     }
 
-    @Override
-    public void error(String msg) {
-        System.out.println(format("[%s] %s", "ERROR", msg));
-    }
-
-    @Override
-    public void warn(String msg) {
-        System.out.println(format("[%s] %s", "WARN", msg));
+    private String toString(int level) {
+        switch (level) {
+            case TRACE:
+                return "TRACE";
+            case INFO:
+                return "INFO";
+            case WARN:
+                return "WARN";
+            case ERROR:
+                return "ERROR";
+            default:
+                return "";
+        }
     }
 }

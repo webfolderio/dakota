@@ -24,6 +24,7 @@ build_script:
           CC=gcc-8 CXX=g++-8 ./vcpkg/bootstrap-vcpkg.sh
           ./vcpkg/vcpkg integrate install
           ./vcpkg/vcpkg install restinio:x64-linux
+          ./vcpkg/vcpkg install zlib:x64-linux
         fi
   - sh: cd $APPVEYOR_BUILD_FOLDER/native && mkdir build
   - sh: cd $APPVEYOR_BUILD_FOLDER/native/build && CC=gcc-8 CXX=g++-8 cmake .. -DCMAKE_TOOLCHAIN_FILE=/home/appveyor/projects/dakota/vcpkg/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-linux
@@ -34,6 +35,7 @@ build_script:
   - sh: java -version
   - sh: cd $APPVEYOR_BUILD_FOLDER && mvn -DskipTests -q package
   - cmd: vcpkg.exe install restinio:x64-windows-static
+  - cmd: vcpkg.exe install zlib:x64-windows-static
   - cmd: scripts\build.bat
   - cmd: java -version
   - cmd: mvn -DskipTests -q package
