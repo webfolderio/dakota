@@ -76,6 +76,10 @@ public class WebServer {
         _stop();
     }
 
+    public Logger getLogger() {
+        return settings.getLogger();
+    }
+
     public boolean running() {
         return server > 0 ? true : false;
     }

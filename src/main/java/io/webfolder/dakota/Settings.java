@@ -6,6 +6,8 @@ public class Settings {
 
     private final int port;
 
+    private Logger logger = new ConsoleLogger();
+
     public Settings() {
         this(8080);
     }
@@ -25,5 +27,13 @@ public class Settings {
 
     public int getPort() {
         return port;
+    }
+
+    public Logger getLogger() {
+        return logger;
+    }
+
+    public void setLogger(Logger logger) {
+        this.logger = logger;
     }
 }
