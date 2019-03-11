@@ -12,10 +12,10 @@ stack: jdk 11
 
 cache:
   - vcpkg -> appveyor.yml
+  - /home/appveyor/.m2 -> pom.xml
   - C:\tools\vcpkg\installed -> appveyor.yml
   - C:\tools\vcpkg\packages -> appveyor.yml
   - C:\Users\appveyor\.m2 -> pom.xml
-  - ~/.m2 -> pom.xml
 
 build_script:
   - sh: |

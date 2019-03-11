@@ -24,7 +24,6 @@ public class TestAppendDateHeader {
 
     @Before
     public void init() {
-        System.out.println("m2 home: " + OkHttpClient.class.getProtectionDomain().getCodeSource().getLocation());
         try (ServerSocket socket = new ServerSocket(0)) {
             this.freePort = socket.getLocalPort();
         } catch (IOException e) {
