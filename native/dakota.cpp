@@ -31,7 +31,7 @@ public:
     String(JNIEnv* env, jstring from)
         : env_{ env }
         , java_str_(from)
-        , str_{ env->GetStringUTFChars(from, JNI_FALSE) }
+        , str_{ env->GetStringUTFChars(from, nullptr) }
     {
     }
     ~String()
@@ -598,6 +598,8 @@ public:
 
         asio::post(ioctx, [&] {
             server->open_sync();
+            JavaField field{ env, "io/webfolder/dakota/WebServer", "started", "Z" };
+            env->SetBooleanField(that, field.get(), JNI_TRUE);
         });
 
         try {
@@ -623,6 +625,8 @@ public:
         JavaField fServer = { env, "io/webfolder/dakota/WebServer", "server", "J" };
         jlong ptrServer = env->GetLongField(that, fServer.get());
         env->SetLongField(that, fServer.get(), -1);
+        JavaField field{ env, "io/webfolder/dakota/WebServer", "started", "Z" };
+        env->SetBooleanField(that, field.get(), JNI_FALSE);
         using server_t = restinio::http_server_t<dakota_traits>;
         if (ptrServer > 0) {
             auto* server = (server_t*)ptrServer;

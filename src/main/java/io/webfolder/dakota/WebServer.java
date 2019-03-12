@@ -35,6 +35,8 @@ public class WebServer {
 
     private long server;
 
+    private boolean started;
+
     private final Settings settings;
 
     private final Request request = new RequestImpl();
@@ -68,19 +70,15 @@ public class WebServer {
         _run(settings, router.getRoutes(), nonMatchedHandler, request, response);
     }
 
-    public Settings getSettings() {
-        return settings;
-    }
-
     public void stop() {
         _stop();
     }
 
-    public Logger getLogger() {
-        return settings.getLogger();
+    public boolean running() {
+        return server > 0 && started ? true : false;
     }
 
-    public boolean running() {
-        return server > 0 ? true : false;
+    private Logger getLogger() {
+        return settings.getLogger();
     }
 }

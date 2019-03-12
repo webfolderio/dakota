@@ -1,12 +1,13 @@
 package io.webfolder.dakota;
 
 import static java.lang.String.format;
+import static java.lang.System.out;
 
 public class ConsoleLogger implements Logger {
 
     @Override
     public void log(int level, String message) {
-        System.out.println(format("[%s] %s", toString(level), message));
+        out.println(format("[%s] %s", toString(level), message));
     }
 
     @Override
