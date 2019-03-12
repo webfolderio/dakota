@@ -82,6 +82,7 @@ class ResponseImpl implements Response {
 
     @Override
     public void body(long contextId, File file) {
+        assert file != null;
         _sendfile(contextId, file.getAbsolutePath());
     }
 

@@ -1,5 +1,6 @@
 package io.webfolder.dakota;
 
+import static io.webfolder.dakota.Logger.ERROR;
 import static java.io.File.pathSeparatorChar;
 import static java.lang.System.load;
 import static java.nio.file.Files.copy;
@@ -88,6 +89,11 @@ public class WebServer {
     }
 
     private boolean reject(Throwable t) {
-        return t != null && t instanceof ContextNotFoundException;
+        if (t != null && (t instanceof ContextNotFoundException ||
+                          t instanceof ResponseNotFoundException)) {
+            getLogger().log(ERROR, t.getMessage());
+            return true;
+        }
+        return true;
     }
 }

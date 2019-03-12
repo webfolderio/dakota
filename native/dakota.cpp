@@ -877,33 +877,40 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            String str{ env, body };
-            if (compress == JNI_FALSE) {
-                context->response()->set_body(str.c_str());
-            } else {
-                bool hasContentEncoding = (*context->request())->header().has_field(restinio::http_field_t::accept_encoding);
-                bool supportsGzip = false;
-                if (hasContentEncoding) {
-                    auto ce = (*context->request())->header().get_field(restinio::http_field_t::accept_encoding);
-                    std::string token;
-                    std::istringstream tokenStream(ce);
-                    while (std::getline(tokenStream, token, ',')) {
-                        if (token == "gzip") {
-                            supportsGzip = true;
+            if (context->response() != nullptr) {
+                String str{ env, body };
+                if (compress == JNI_FALSE) {
+                    context->response()->set_body(str.c_str());
+                } else {
+                    bool hasContentEncoding = (*context->request())->header().has_field(restinio::http_field_t::accept_encoding);
+                    bool supportsGzip = false;
+                    if (hasContentEncoding) {
+                        auto ce = (*context->request())->header().get_field(restinio::http_field_t::accept_encoding);
+                        std::string token;
+                        std::istringstream tokenStream(ce);
+                        while (std::getline(tokenStream, token, ',')) {
+                            if (token == "gzip") {
+                                supportsGzip = true;
+                            }
                         }
                     }
-                }
-                if (supportsGzip) {
-                    context->response()->append_header(restinio::http_field_t::content_encoding, "gzip");
-                    std::string compressed = restinio::transforms::zlib::gzip_compress(str.c_str());
-                    context->response()->set_body(compressed);
-                } else {
-                    context->response()->set_body(str.c_str());
-                }
+                    if (supportsGzip) {
+                        context->response()->append_header(restinio::http_field_t::content_encoding, "gzip");
+                        std::string compressed = restinio::transforms::zlib::gzip_compress(str.c_str());
+                        context->response()->set_body(compressed);
+                    } else {
+                        context->response()->set_body(str.c_str());
+                    }
+                }            
+            } else {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/ResponseNotFoundException" };
+                env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+                return;
             }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return;
         }
     }
 
@@ -911,13 +918,20 @@ public:
     {
         Context* context = nullptr;
         if (body && connections.find(contextId, context)) {
-            std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
-            const char* buffer = (const char*)env->GetDirectBufferAddress(body);
-            context->response()->set_body(restinio::const_buffer(buffer, len));
-            context->setResponseDirectBuffer(env->NewGlobalRef(body));
+            if (context->response() != nullptr) {
+                std::size_t len = (std::size_t)env->GetDirectBufferCapacity(body);
+                const char* buffer = (const char*)env->GetDirectBufferAddress(body);
+                context->response()->set_body(restinio::const_buffer(buffer, len));
+                context->setResponseDirectBuffer(env->NewGlobalRef(body));            
+            } else {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/ResponseNotFoundException" };
+                env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+                return;
+            }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return;
         }
     }
 
@@ -925,25 +939,33 @@ public:
     {
         Context* context = nullptr;
         if (body && connections.find(contextId, context)) {
-            jboolean isCopy;
-            jbyte* buffer = env->GetByteArrayElements(body, &isCopy);
-            if (buffer) {
-                jsize size = env->GetArrayLength(body);
-                context->setResponseNativeArray(buffer);
-                context->setResponseArray((jbyteArray)env->NewGlobalRef(body));
-                context->response()->set_body(restinio::const_buffer((const char*)context->getResponseNativeArray(), size));
-                if (isCopy) {
-                    context->setReleaseMode(0);
+            if (context->response() != nullptr) {
+                jboolean isCopy;
+                jbyte* buffer = env->GetByteArrayElements(body, &isCopy);
+                if (buffer) {
+                    jsize size = env->GetArrayLength(body);
+                    context->setResponseNativeArray(buffer);
+                    context->setResponseArray((jbyteArray)env->NewGlobalRef(body));
+                    context->response()->set_body(restinio::const_buffer((const char*)context->getResponseNativeArray(), size));
+                    if (isCopy) {
+                        context->setReleaseMode(0);
+                    } else {
+                        context->setReleaseMode(JNI_ABORT);
+                    }
                 } else {
-                    context->setReleaseMode(JNI_ABORT);
+                    JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
+                    env->ThrowNew(exceptionClass.get(), "Can't allocate memory.");
+                    return;
                 }
             } else {
-                JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
-                env->ThrowNew(exceptionClass.get(), "Can't allocate memory.");
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/ResponseNotFoundException" };
+                env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+                return;
             }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return;
         }
     }
 
@@ -951,15 +973,23 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            try {
-                context->response()->set_body(restinio::sendfile(std::string(String{ env, path }.c_str())));
-            } catch (const std::exception& ex) {
-                JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
-                env->ThrowNew(exceptionClass.get(), ex.what());
+            if (context->response() != nullptr) {            
+                try {
+                    context->response()->set_body(restinio::sendfile(std::string(String{ env, path }.c_str())));
+                } catch (const std::exception& ex) {
+                    JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
+                    env->ThrowNew(exceptionClass.get(), ex.what());
+                    return;
+                }
+            } else {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/ResponseNotFoundException" };
+                env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+                return;
             }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return;
         }
     }
 
@@ -967,25 +997,32 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            context->response()->done([contextId, context](const auto& ec) {
-                if (context->getResponseNativeArray()) {
-                    auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
-                    envCurrentThread->ReleaseByteArrayElements(
-                        context->getResponseArray(),
-                        context->getResponseNativeArray(),
-                        context->getReleaseMode());
-                    envCurrentThread->DeleteGlobalRef(context->getResponseArray());
-                }
-                if (context->getResponseDirectBuffer()) {
-                    auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
-                    envCurrentThread->DeleteGlobalRef(context->getResponseDirectBuffer());
-                }
-                connections.erase(contextId);
-                delete context;
-            });
+            if (context->response() != nullptr) {
+                context->response()->done([contextId, context](const auto& ec) {
+                    if (context->getResponseNativeArray()) {
+                        auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
+                        envCurrentThread->ReleaseByteArrayElements(
+                            context->getResponseArray(),
+                            context->getResponseNativeArray(),
+                            context->getReleaseMode());
+                        envCurrentThread->DeleteGlobalRef(context->getResponseArray());
+                    }
+                    if (context->getResponseDirectBuffer()) {
+                        auto envCurrentThread = *(JNIEnv**)&envCache.at(std::move(std::this_thread::get_id()));
+                        envCurrentThread->DeleteGlobalRef(context->getResponseDirectBuffer());
+                    }
+                    connections.erase(contextId);
+                    delete context;
+                });            
+            } else {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/ResponseNotFoundException" };
+                env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+                return;
+            }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return;
         }
     }
 
@@ -993,12 +1030,19 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            String s_name{ env, name };
-            String s_value{ env, value };
-            context->response()->append_header(s_name.c_str(), s_value.c_str());
+            if (context->response() != nullptr) {
+                String s_name{ env, name };
+                String s_value{ env, value };
+                context->response()->append_header(s_name.c_str(), s_value.c_str());
+            } else {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/ResponseNotFoundException" };
+                env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+                return;
+            }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return;
         }
     }
 
@@ -1006,10 +1050,17 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            context->response()->connection_close();
+            if (context->response() != nullptr) {
+                context->response()->connection_close();
+            } else {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/ResponseNotFoundException" };
+                env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+                return;
+            }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return;
         }
     }
 
@@ -1017,10 +1068,17 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            context->response()->connection_keep_alive();
+            if (context->response() != nullptr) {
+                context->response()->connection_keep_alive();
+            } else {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/ResponseNotFoundException" };
+                env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+                return;
+            }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return;
         }
     }
 
@@ -1028,10 +1086,17 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            context->response()->append_header_date_field();
+            if (context->response() != nullptr) {
+                context->response()->append_header_date_field();
+            } else {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/ResponseNotFoundException" };
+                env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+                return;
+            }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return;
         }
     }
 };
