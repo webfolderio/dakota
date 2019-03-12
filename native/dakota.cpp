@@ -101,13 +101,14 @@ public:
 class dakota_logger_t {
 public:
     dakota_logger_t(jobject logger, JavaMethod* method, bool ennabled[]) noexcept
-        : logger_{ logger }, method_(method)
+        : logger_{ logger }
+        , method_(method)
         , ennabled_{
-                    ennabled[L_LEVEL_TRACE],
-                    ennabled[L_LEVEL_INFO],
-                    ennabled[L_LEVEL_WARN],
-                    ennabled[L_LEVEL_ERROR]
-                    }
+            ennabled[L_LEVEL_TRACE],
+            ennabled[L_LEVEL_INFO],
+            ennabled[L_LEVEL_WARN],
+            ennabled[L_LEVEL_ERROR]
+        }
     {
     }
 
@@ -154,7 +155,7 @@ private:
                 }
             } catch (const std::exception&) {
                 // ignore
-            }        
+            }
         }
     }
 };
@@ -578,7 +579,7 @@ public:
         JavaMethod* methodLog = new JavaMethod{ env, "io/webfolder/dakota/Logger", "log", "(ILjava/lang/String;)V" };
         JavaMethod methodEnnabled{ env, "io/webfolder/dakota/Logger", "ennabled", "(I)Z" };
 
-        bool ennabled[4] = {false, false, false, false};
+        bool ennabled[4] = { false, false, false, false };
 
         ennabled[L_LEVEL_TRACE] = env->CallBooleanMethod(logger, methodEnnabled.get(), L_LEVEL_TRACE) == JNI_TRUE;
         ennabled[L_LEVEL_INFO] = env->CallBooleanMethod(logger, methodEnnabled.get(), L_LEVEL_INFO) == JNI_TRUE;
@@ -646,6 +647,9 @@ public:
             auto response = std::make_unique<restinio::response_builder_t<restinio::restinio_controlled_output_t>>(
                 (*request)->create_response(status_line));
             context->setResponse(response.release());
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -694,6 +698,8 @@ public:
                 });
             return map;
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return nullptr;
         }
     }
@@ -706,6 +712,8 @@ public:
             auto target = restinio::cast_to<std::string>((*request)->header().request_target());
             return env->NewStringUTF(target.c_str());
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return nullptr;
         }
     }
@@ -718,6 +726,8 @@ public:
             jstring value = context->param(env, param.c_str());
             return value;
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return nullptr;
         }
     }
@@ -729,6 +739,8 @@ public:
             jstring value = context->param(env, index);
             return value;
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return nullptr;
         }
     }
@@ -739,6 +751,8 @@ public:
         if (connections.find(contextId, context)) {
             return context->namedParamSize();
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return -1;
         }
     }
@@ -749,6 +763,8 @@ public:
         if (connections.find(contextId, context)) {
             return context->indexedParamSize();
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return -1;
         }
     }
@@ -760,6 +776,8 @@ public:
             auto* request = context->request();
             return env->NewStringUTF((*request)->body().c_str());
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return nullptr;
         }
     }
@@ -771,6 +789,8 @@ public:
             auto* request = context->request();
             return (jlong)(*request)->body().length();
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return -1;
         }
     }
@@ -792,6 +812,8 @@ public:
                 return nullptr;
             }
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return nullptr;
         }
     }
@@ -808,6 +830,9 @@ public:
 #else
             strncpy(dest, (*request)->body().c_str(), (size_t)len);
 #endif
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -817,6 +842,8 @@ public:
         if (connections.find(contextId, context)) {
             return (*context->request())->connection_id();
         } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
             return -1;
         }
     }
@@ -849,6 +876,9 @@ public:
                     context->response()->set_body(str.c_str());
                 }
             }
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -860,6 +890,9 @@ public:
             const char* buffer = (const char*)env->GetDirectBufferAddress(body);
             context->response()->set_body(restinio::const_buffer(buffer, len));
             context->setResponseDirectBuffer(env->NewGlobalRef(body));
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -883,6 +916,9 @@ public:
                 JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
                 env->ThrowNew(exceptionClass.get(), "Can't allocate memory.");
             }
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -890,8 +926,15 @@ public:
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            String str{ env, path };
-            context->response()->set_body(restinio::sendfile(str.c_str()));
+            try {
+                context->response()->set_body(restinio::sendfile(std::string(String{ env, path }.c_str())));
+            } catch (const std::exception& ex) {
+                JavaClass exceptionClass{ env, "io/webfolder/dakota/DakotaException" };
+                env->ThrowNew(exceptionClass.get(), ex.what());
+            }
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -915,6 +958,9 @@ public:
                 connections.erase(contextId);
                 delete context;
             });
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -925,6 +971,9 @@ public:
             String s_name{ env, name };
             String s_value{ env, value };
             context->response()->append_header(s_name.c_str(), s_value.c_str());
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -933,6 +982,9 @@ public:
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
             context->response()->connection_close();
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -941,6 +993,9 @@ public:
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
             context->response()->connection_keep_alive();
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 
@@ -949,6 +1004,9 @@ public:
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
             context->response()->append_header_date_field();
+        } else {
+            JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
+            env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
         }
     }
 };
