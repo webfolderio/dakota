@@ -22,7 +22,7 @@ find_package(unofficial-http-parser REQUIRED)
 find_package(fmt REQUIRED)
 find_package(restinio REQUIRED)
 find_package(Threads REQUIRED)
-find_package(zlib REQUIRED)
+find_package(ZLIB REQUIRED)
 
 INCLUDE_DIRECTORIES(${JAVA_INCLUDE_PATH})
 INCLUDE_DIRECTORIES(${JAVA_INCLUDE_PATH2})
