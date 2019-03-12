@@ -12,32 +12,16 @@ public class ConsoleLogger implements Logger {
 
     @Override
     public boolean ennabled(int level) {
-        switch (level) {
-            case TRACE:
-                return true;
-            case INFO:
-                return true;
-            case WARN:
-                return true;
-            case ERROR:
-                return true;
-            default:
-                return true;
-        }
+        return true;
     }
 
     private String toString(int level) {
         switch (level) {
-            case TRACE:
-                return "TRACE";
-            case INFO:
-                return "INFO";
-            case WARN:
-                return "WARN";
-            case ERROR:
-                return "ERROR";
-            default:
-                return "";
+            case TRACE: return "TRACE";
+            case INFO : return "INFO" ;
+            case WARN : return "WARN" ;
+            case ERROR: return "ERROR";
+            default   : return ""     ;
         }
     }
 }

@@ -539,26 +539,31 @@ public:
                 jthrowable exception = envCurrentThread->ExceptionOccurred();
                 envCurrentThread->ExceptionClear();
                 jboolean reject = envCurrentThread->CallBooleanMethod(that, mReject.get(), exception);
+                if (envCurrentThread->ExceptionCheck()) {
+                    envCurrentThread->ExceptionDescribe();
+                    envCurrentThread->ExceptionClear();
+                    reject = JNI_TRUE;
+                }
+                jobject ret = envCurrentThread->CallObjectMethod(exceptionHandler, mHandleException.get(), contextId, oRequest, oResponse, exception);
+                if (envCurrentThread->ExceptionCheck()) {
+                    envCurrentThread->ExceptionDescribe();
+                    envCurrentThread->ExceptionClear();
+                    reject = JNI_TRUE;
+                } else {
+                    status = (jint)envCurrentThread->GetIntField(ret, statusField.get());
+                }
                 if (reject == JNI_TRUE) {
                     connections.erase(contextId);
                     delete context;
-                } else {
-                    jobject ret = envCurrentThread->CallObjectMethod(exceptionHandler, mHandleException.get(), contextId, oRequest, oResponse, exception);
-                    if (envCurrentThread->ExceptionCheck()) {
-                        envCurrentThread->ExceptionDescribe();
-                        envCurrentThread->ExceptionClear();
-                    } else {
-                        status = (jint)envCurrentThread->GetIntField(ret, statusField.get());
-                    }
                 }
             } else {
                 status = (jint)envCurrentThread->GetIntField(handlerStatus, statusField.get());            
             }
             switch (status) {
-            case HANDLER_STATUS_ACCEPTED:
-                return restinio::request_accepted();
-            default:
-                return restinio::request_rejected();
+                case HANDLER_STATUS_ACCEPTED:
+                    return restinio::request_accepted();
+                default:
+                    return restinio::request_rejected();
             }
         };
         auto router = std::make_unique<restinio::router::express_router_t<>>();
