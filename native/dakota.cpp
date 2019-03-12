@@ -435,7 +435,7 @@ struct Restinio {
         env->RegisterNatives(server.get(), serverMethods, sizeof(serverMethods) / sizeof(serverMethods[0]));
 
         JNINativeMethod requestImpl[] = {
-            "_createResponse", "(JILjava/lang/String;)V", (void*)&Restinio::createResponse,
+            "_createResponse", "(JILjava/lang/String;)Z", (void*)&Restinio::createResponse,
             "_query", "(J)Ljava/util/Map;", (void*)&Restinio::query,
             "_header", "(J)Ljava/util/Map;", (void*)&Restinio::header,
             "_target", "(J)Ljava/lang/String;", (void*)&Restinio::target,
@@ -508,6 +508,11 @@ public:
         JavaMethod handleMethod{ env, "io/webfolder/dakota/Handler", "handle", "(JLio/webfolder/dakota/Request;Lio/webfolder/dakota/Response;)Lio/webfolder/dakota/HandlerStatus;" };
         JavaField statusField{ env, "io/webfolder/dakota/HandlerStatus", "value", "I" };
 
+        JavaMethod mGetExceptionHandler{ env, "io/webfolder/dakota/WebServer", "getExceptionHandler", "()Lio/webfolder/dakota/ExceptionHandler;" };
+        jthrowable exceptionHandler = (jthrowable) env->CallObjectMethod(that, mGetExceptionHandler.get());
+        JavaMethod mHandleException{ env, "io/webfolder/dakota/ExceptionHandler", "handle", "(JLio/webfolder/dakota/Request;Lio/webfolder/dakota/Response;Ljava/lang/Throwable;)Lio/webfolder/dakota/HandlerStatus;" };
+        JavaMethod mReject{ env, "io/webfolder/dakota/WebServer", "reject", "(Ljava/lang/Throwable;)Z" };
+
         std::random_device dev;
         std::mt19937 rng(dev());
         auto random = rng();
@@ -529,12 +534,26 @@ public:
             jobject handlerStatus = envCurrentThread->CallObjectMethod(handler,
                 handleMethod.get(),
                 contextId, oRequest, oResponse);
+            jint status = HANDLER_STATUS_REJECTED;
             if (envCurrentThread->ExceptionCheck()) {
-                connections.erase(contextId);
-                delete context;
-                return restinio::request_rejected();
+                jthrowable exception = envCurrentThread->ExceptionOccurred();
+                envCurrentThread->ExceptionClear();
+                jboolean reject = envCurrentThread->CallBooleanMethod(that, mReject.get(), exception);
+                if (reject == JNI_TRUE) {
+                    connections.erase(contextId);
+                    delete context;
+                } else {
+                    jobject ret = envCurrentThread->CallObjectMethod(exceptionHandler, mHandleException.get(), contextId, oRequest, oResponse, exception);
+                    if (envCurrentThread->ExceptionCheck()) {
+                        envCurrentThread->ExceptionDescribe();
+                        envCurrentThread->ExceptionClear();
+                    } else {
+                        status = (jint)envCurrentThread->GetIntField(ret, statusField.get());
+                    }
+                }
+            } else {
+                status = (jint)envCurrentThread->GetIntField(handlerStatus, statusField.get());            
             }
-            jint status = (jint)envCurrentThread->GetIntField(handlerStatus, statusField.get());
             switch (status) {
             case HANDLER_STATUS_ACCEPTED:
                 return restinio::request_accepted();
@@ -637,19 +656,25 @@ public:
         }
     }
 
-    static void createResponse(JNIEnv* env, jobject that, jlong contextId, jint status, jstring reasonPhrase)
+    static jboolean createResponse(JNIEnv* env, jobject that, jlong contextId, jint status, jstring reasonPhrase)
     {
         Context* context = nullptr;
         if (connections.find(contextId, context)) {
-            restinio::request_handle_t* request = context->request();
-            String str{ env, reasonPhrase };
-            restinio::http_status_line_t status_line = restinio::http_status_line_t{ restinio::http_status_code_t{ (uint16_t)status }, str.c_str() };
-            auto response = std::make_unique<restinio::response_builder_t<restinio::restinio_controlled_output_t>>(
-                (*request)->create_response(status_line));
-            context->setResponse(response.release());
+            if (context->response() == nullptr) {
+                restinio::request_handle_t* request = context->request();
+                String str{ env, reasonPhrase };
+                restinio::http_status_line_t status_line = restinio::http_status_line_t{ restinio::http_status_code_t{ (uint16_t)status }, str.c_str() };
+                auto response = std::make_unique<restinio::response_builder_t<restinio::restinio_controlled_output_t>>(
+                    (*request)->create_response(status_line));
+                context->setResponse(response.release());
+                return JNI_TRUE;
+            } else {
+                return JNI_FALSE;
+            }
         } else {
             JavaClass exceptionClass{ env, "io/webfolder/dakota/ContextNotFoundException" };
             env->ThrowNew(exceptionClass.get(), std::to_string(contextId).c_str());
+            return JNI_FALSE;
         }
     }
 

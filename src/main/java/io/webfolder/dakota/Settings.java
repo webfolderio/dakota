@@ -8,6 +8,8 @@ public class Settings {
 
     private Logger logger = new ConsoleLogger();
 
+    private ExceptionHandler exceptionHandler = new ExceptionHandler() {};
+
     public Settings() {
         this(8080);
     }
@@ -35,5 +37,13 @@ public class Settings {
 
     public void setLogger(Logger logger) {
         this.logger = logger;
+    }
+
+    public ExceptionHandler getExceptionHandler() {
+        return exceptionHandler;
+    }
+
+    public void setExceptionHandler(ExceptionHandler exceptionHandler) {
+        this.exceptionHandler = exceptionHandler;
     }
 }

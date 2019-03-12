@@ -5,7 +5,7 @@ import java.util.Map;
 
 public interface Request {
 
-    void createResponse(long contextId, HttpStatus status);
+    boolean createResponse(long contextId, HttpStatus status);
 
     String body(long contextId);
 

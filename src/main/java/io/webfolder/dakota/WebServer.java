@@ -39,7 +39,7 @@ public class WebServer {
 
     private final Settings settings;
 
-    private final Request request = new RequestImpl();
+    private final Request request;
 
     private final Response response = new ResponseImpl();
 
@@ -56,6 +56,7 @@ public class WebServer {
 
     public WebServer(Settings settings) {
         this.settings = settings;
+        this.request = new RequestImpl(settings.getLogger());
     }
 
     public WebServer() {
@@ -80,5 +81,13 @@ public class WebServer {
 
     private Logger getLogger() {
         return settings.getLogger();
+    }
+
+    private ExceptionHandler getExceptionHandler() {
+        return settings.getExceptionHandler();
+    }
+
+    private boolean reject(Throwable t) {
+        return t != null && t instanceof ContextNotFoundException;
     }
 }

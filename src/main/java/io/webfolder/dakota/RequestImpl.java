@@ -1,5 +1,6 @@
 package io.webfolder.dakota;
 
+import static io.webfolder.dakota.Logger.WARN;
 import static java.lang.Integer.MAX_VALUE;
 import static java.nio.ByteBuffer.allocateDirect;
 import static java.util.Collections.emptyMap;
@@ -14,7 +15,9 @@ class RequestImpl implements Request {
 
     private static final ByteOrder ORDER = nativeOrder();
 
-    private native void _createResponse(long contextId, int status, String reasonPhrase);
+    private final Logger logger;
+
+    private native boolean _createResponse(long contextId, int status, String reasonPhrase);
 
     private native Map<String, String> _query(long contextId);
 
@@ -40,9 +43,17 @@ class RequestImpl implements Request {
 
     private native long _connectionId(long contextId);
 
+    public RequestImpl(Logger logger) {
+        this.logger = logger;
+    }
+
     @Override
-    public void createResponse(long contextId, HttpStatus status) {
-        _createResponse(contextId, status.value, status.reasonPhrase);
+    public boolean createResponse(long contextId, HttpStatus status) {
+        boolean ok = _createResponse(contextId, status.value, status.reasonPhrase);
+        if (!ok) {
+            logger.log(WARN, "createResponse() is already called.");
+        }
+        return ok;
     }
 
     @Override

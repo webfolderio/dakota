@@ -8,6 +8,7 @@ import org.junit.runners.Suite.SuiteClasses;
     TestAppendDateHeader.class,
     TestAppendHeader.class,
     TestAsyncHttpGet.class,
+    TestGzipCompression.class,
     TestHttpClose.class,
     TestHttpGet.class,
     TestHttpHeader.class,
@@ -16,6 +17,8 @@ import org.junit.runners.Suite.SuiteClasses;
     TestHttpParam.class,
     TestHttpPost.class,
     TestHttpPostByteArray.class,
+    TestHttpPostByteBuffer.class,
+    TestHttpSendFile.class,
     TestMultipleServer.class,
     TestNotFoundHandler.class,
     TestQueryParam.class
